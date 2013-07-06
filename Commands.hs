@@ -1,28 +1,32 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module Commands (commands) where
+module Commands
+  ( commands
+  , CommandMap
+  ) where
 
-import Control.Monad
-import Data.Monoid ((<>))
-import Data.Maybe
-import Data.Map (Map)
-import qualified Data.Map as M
-import Data.ByteString.Char8 (pack)
-import Data.ByteString (ByteString, cons)
+import           Control.Monad
+import           Data.Monoid                ((<>))
+import           Data.Maybe
+import           Data.ByteString.Char8      (pack)
+import           Data.ByteString            (ByteString, cons)
 import qualified Data.ByteString.Lazy.Char8 as LBS
-import Network.SimpleIRC
-import Network.HTTP
-import Data.Aeson
-import Data.Aeson.Types (parseMaybe)
+import qualified Data.Map                   as M
+import           Network.SimpleIRC
+import           Network.HTTP
+import           Data.Aeson
+import           Data.Aeson.Types           (parseMaybe)
 
 import Utils
 
-type CommandMap = Map ByteString ([ByteString] -> EventFunc)
+
+type CommandMap = M.Map ByteString ([ByteString] -> EventFunc)
 
 commands :: CommandMap
 commands = M.fromList [ ("echo", echo)
                       , ("inspace", inspace)
                       ]
+
 
 echo :: [ByteString] -> EventFunc
 echo args s msg = respond s msg $ unwordsBS args
