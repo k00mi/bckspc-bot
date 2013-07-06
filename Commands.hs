@@ -10,7 +10,9 @@ import Network.SimpleIRC
 
 import Utils
 
-commands :: Map ByteString ([ByteString] -> EventFunc)
+type CommandMap = Map ByteString ([ByteString] -> EventFunc)
+
+commands :: CommandMap
 commands = M.fromList [("echo", echo)
                       ]
 
