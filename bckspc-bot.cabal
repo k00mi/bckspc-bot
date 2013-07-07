@@ -18,4 +18,12 @@ cabal-version:       >=1.8
 executable bckspc-bot
   main-is: Main.hs
   other-modules: Commands, Utils
-  build-depends:       base ==4.6.*, bytestring ==0.10.2.*, simpleirc ==0.3.*, containers ==0.5.*, HTTP ==4000.2.*, aeson ==0.6.*
+  build-depends: base ==4.6.*,
+                 bytestring ==0.10.2.*,
+                 simpleirc ==0.3.*,
+                 containers ==0.5.*,
+                 HTTP ==4000.2.*,
+                 aeson ==0.6.*,
+                 transformers == 0.3.*
+  extensions: GeneralizedNewtypeDeriving,
+              OverloadedStrings

@@ -23,9 +23,10 @@ import           Data.Aeson
 import           Data.Aeson.Types           (parseMaybe)
 
 import Utils
+import EventEnv
 
 
-type CommandMap = M.Map ByteString ([ByteString] -> EventFunc)
+type CommandMap = M.Map ByteString ([ByteString] -> EventEnv ())
 
 commands :: CommandMap
 commands = M.fromList [ ("echo", echo)
@@ -34,37 +35,39 @@ commands = M.fromList [ ("echo", echo)
                       ]
 
 
-echo :: [ByteString] -> EventFunc
-echo args s msg = respond s msg $ unwordsBS args
+echo :: [ByteString] -> EventEnv ()
+echo = respond . unwordsBS
 
 
-inspace :: [ByteString] -> EventFunc
-inspace args s msg = do
-    resp <- simpleHTTP (getRequest url) >>= getResponseBody
+inspace :: [ByteString] -> EventEnv ()
+inspace args = do
+    resp <- lift $ simpleHTTP (getRequest url) >>= getResponseBody
     let obj    = decode $ LBS.pack resp
         nicks  = maybe "Error fetching nicknames" unwordsBS $
           obj >>= parseMaybe (mapM (.: "nickname") <=< (.: "members_present"))
         opener = maybe "Members present: "
                        (\x -> pack (show (x :: Int )) <> " members present: ")
                        (obj >>= parseMaybe (.: "members"))
-    respondNick s msg $ opener <> nicks
+    respondNick $ opener <> nicks
   where
     url = "http://status.bckspc.de/status.php?response=json"
 
 
-pizza :: [ByteString] -> EventFunc
-pizza args s msg =
+pizza :: [ByteString] -> EventEnv ()
+pizza args =
     if null args
       then notifyIn $ mins 15
       else maybe error notifyIn . getTime $ head args
   where
     notifyIn t = do
-        forkIO $ do
+        s <- asks server
+        m <- asks msg
+        lift . forkIO $ do
             threadDelay t
-            say "Time is up!"
-        say "I won't forget it!"
+            runEnv (respondNick "Time is up!") s m
+        respondNick "I won't forget it!"
 
-    error = say "Could not parse duration"
+    error = respondNick "Could not parse duration"
 
     getTime str = do
         (numStr, suffix) <- BSC.unsnoc str
@@ -79,5 +82,3 @@ pizza args s msg =
     secs  x = x * 10^6
     mins  x = x * secs 60
     hours x = x * mins 60
-
-    say = respondNick s msg

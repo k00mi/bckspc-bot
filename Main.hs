@@ -8,6 +8,7 @@ import qualified Data.ByteString            as BS
 import qualified Data.Map                   as M
 import           Network.SimpleIRC
 
+import EventEnv
 import Commands
 import Utils
 
@@ -30,7 +31,7 @@ onMessage cmds s msg = -- do
       let maybeResp = do
             (cmd, args) <- parseCmd m
             f <- M.lookup cmd cmds
-            return $ f args s msg
+            return $ runEnv (f args) s msg
       fromMaybe (pure ()) maybeResp
   where
     chan = fromJust $ mChan msg
