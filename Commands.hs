@@ -42,12 +42,22 @@ echo = respond . unwordsBS
 inspace :: [ByteString] -> EventEnv ()
 inspace args = do
     resp <- lift $ simpleHTTP (getRequest url) >>= getResponseBody
+
     let obj    = decode $ LBS.pack resp
-        nicks  = maybe "Error fetching nicknames" unwordsBS $
-          obj >>= parseMaybe (mapM (.: "nickname") <=< (.: "members_present"))
-        opener = maybe "Members present: "
-                       (\x -> pack (show (x :: Int )) <> " members present: ")
-                       (obj >>= parseMaybe (.: "members"))
+
+        nicks  = maybe
+                  "Error fetching nicknames"
+                  unwordsBS
+                  (obj >>= parseMaybe
+                            ((.: "members_present") >=> mapM (.: "nickname")))
+
+        opener = maybe
+                  "Members present: "
+                  (\x -> if x == 0
+                          then "Backspace is empty"
+                          else pack (show x) <> " members present: ")
+                  (obj >>= parseMaybe (.: "members") :: Maybe Int)
+
     respondNick $ opener <> nicks
   where
     url = "http://status.bckspc.de/status.php?response=json"
