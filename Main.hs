@@ -26,21 +26,11 @@ main = do
 
 
 onMessage :: CommandMap -> EventFunc
-onMessage cmds s msg = -- do
-    when ("!" `isPrefixOf` m) $ do
-      let maybeResp = do
-            (cmd, args) <- parseCmd m
-            f <- M.lookup cmd cmds
-            return $ runEnv (f args) s msg
-      fromMaybe (pure ()) maybeResp
+onMessage cmds s msg =
+    case wordsBS (mMsg msg) of
+        (cmd:args)     | "!" `isPrefixOf` cmd
+                      -> maybe (pure ()) (applyCmd args) $
+                           M.lookup (BS.tail cmd) cmds
+        _             -> pure ()
   where
-    chan = fromJust $ mChan msg
-    nick = fromJust $ mNick msg
-    orig = fromJust $ mOrigin msg
-    m    = mMsg msg
-
-
-parseCmd :: ByteString -> Maybe (ByteString, [ByteString])
-parseCmd msg = (, args) <$> listToMaybe cmds
-  where
-    (cmds, args) = splitAt 1 . wordsBS $ BS.tail msg
+    applyCmd args c = runEnv (c args) s msg
