@@ -5,6 +5,7 @@ import           Control.Applicative
 import           Data.Maybe
 import           Data.ByteString            (ByteString, isPrefixOf)
 import qualified Data.ByteString            as BS
+import qualified Data.ByteString.Char8      as BSC
 import qualified Data.Map                   as M
 import           Network.SimpleIRC
 
@@ -27,10 +28,10 @@ main = do
 
 onMessage :: CommandMap -> EventFunc
 onMessage cmds s msg =
-    case wordsBS (mMsg msg) of
+    case BSC.words (mMsg msg) of
         (cmd:args)     | "!" `isPrefixOf` cmd
-                      -> maybe (pure ()) (applyCmd args) $
+                      -> maybe (pure ()) (`applyCmd` args) $
                            M.lookup (BS.tail cmd) cmds
         _             -> pure ()
   where
-    applyCmd args c = runEnv (c args) s msg
+    applyCmd c args = runEnv (c args) s msg

@@ -36,7 +36,7 @@ commands = M.fromList [ ("echo", echo)
 
 
 echo :: [ByteString] -> EventEnv ()
-echo = respond . unwordsBS
+echo = respond . BSC.unwords
 
 
 inspace :: [ByteString] -> EventEnv ()
@@ -47,7 +47,7 @@ inspace args = do
 
         nicks  = maybe
                   "Error fetching nicknames"
-                  unwordsBS
+                  BSC.unwords
                   (obj >>= parseMaybe
                             ((.: "members_present") >=> mapM (.: "nickname")))
 

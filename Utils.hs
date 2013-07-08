@@ -1,23 +1,13 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 module Utils
-  ( space
-  , wordsBS
-  , unwordsBS
+  ( sanitize
   ) where
 
-import           Data.Word
+import           Data.Char                  (isLetter)
 import           Data.ByteString            (ByteString)
-import qualified Data.ByteString            as BS
+import qualified Data.ByteString.Char8      as BS
 
 
-space :: Word8
-space = 32
-
-
-wordsBS :: ByteString -> [ByteString]
-wordsBS = BS.split space
-
-
-unwordsBS :: [ByteString] -> ByteString
-unwordsBS = BS.intercalate (BS.singleton space)
+sanitize :: ByteString -> ByteString
+sanitize = fst . BS.breakEnd isLetter
