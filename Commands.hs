@@ -3,26 +3,29 @@
 module Commands
   ( commands
   , CommandMap
+  , addKarma
   ) where
 
 import           Control.Monad
 import           Control.Applicative
 import           Data.Monoid                ((<>))
 import           Data.Maybe
+import           Data.List                  (sortBy)
+import           Data.Ord                   (comparing, Down(..))
 import           Text.Read                  (readMaybe)
-import           Data.Char                  (isDigit)
-import           Data.ByteString            (ByteString, cons)
-import           Data.ByteString.Char8      (pack, unpack)
+import           Data.Char                  (isDigit, isSpace)
+import           Data.ByteString            (ByteString, isPrefixOf)
+import           Data.ByteString.Char8      (pack, unpack, snoc)
 import qualified Data.ByteString.Char8      as BSC
 import qualified Data.ByteString.Lazy.Char8 as LBS
 import qualified Data.Map                   as M
 import           Control.Concurrent         (forkIO, threadDelay)
+import           Control.Exception          (try, SomeException)
 import           Network.SimpleIRC
 import           Network.HTTP
 import           Data.Aeson
 import           Data.Aeson.Types           (parseMaybe)
 
-import Utils
 import EventEnv
 
 
@@ -32,6 +35,8 @@ commands :: CommandMap
 commands = M.fromList [ ("echo", echo)
                       , ("inspace", inspace)
                       , ("pizza", pizza)
+                      , ("karma", karma)
+                      , ("karmatop", karmatop)
                       ]
 
 
@@ -92,3 +97,73 @@ pizza args =
     secs  x = x * 10^6
     mins  x = x * secs 60
     hours x = x * mins 60
+
+
+addKarma :: ByteString -> EventEnv ()
+addKarma nick = flip onKarmaFile pure $ \file -> do
+    ls <- BSC.lines <$> BSC.readFile file
+    let (new, present) = foldl checkAdd (BSC.empty, False) ls
+    BSC.writeFile file $
+        if present
+          then new
+          else new <> nick <> " 1\n"
+  where
+    checkAdd (file, True) bs = (file <> bs `snoc` '\n', True)
+    checkAdd (file, _)    bs
+      | nick `isPrefixOf` bs =
+          let new :: Int
+              new = (+1) . read . unpack $ BSC.dropWhile (not . isSpace) bs
+          in (file <> nick <> pack (' ' : show new) `snoc` '\n', True)
+      | otherwise            = (file <> bs `snoc` '\n', False)
+
+
+karma :: [ByteString] -> EventEnv ()
+karma nicks =
+    onKarmaFile
+      BSC.readFile
+      ( respondNick <=< mkResponse
+      . map (BSC.break isSpace)
+      . BSC.lines
+      )
+  where
+    mkResponse :: [(ByteString, ByteString)] -> EventEnv ByteString
+    mkResponse entries =
+      if null nicks
+        then do
+          n <- asks $ fromJust . mNick . msg
+          let points = lookup n entries
+          return $ maybe
+                      "You have no karma"
+                      (\ps -> "You have" <> ps <> " karma points")
+                      points
+        else return . prettify $ filter (flip elem nicks . fst) entries
+
+
+karmatop :: [ByteString] -> EventEnv ()
+karmatop nums =
+    onKarmaFile
+      BSC.readFile
+      ( respondNick
+      . prettify
+      . take n
+      . sortBy (comparing $ Down . (read :: String -> Int) . unpack . snd)
+      . map (BSC.break isSpace)
+      . BSC.lines
+      )
+  where
+    n = fromMaybe 3 $ readMaybe . unpack =<< listToMaybe nums
+
+
+onKarmaFile :: (FilePath -> IO a) -> (a -> EventEnv ()) -> EventEnv ()
+onKarmaFile io action =
+    lift (try $ io "./karma") >>= either errorResponse action
+
+
+prettify :: [(ByteString, ByteString)] -> ByteString
+prettify = BSC.intercalate ", " . map go
+  where
+    go (nick, points) = (nick `BSC.snoc` ':') <> points
+
+
+errorResponse :: SomeException -> EventEnv ()
+errorResponse = respond . ("Error: " <>) . pack . show

@@ -29,6 +29,7 @@ main = do
 onMessage :: CommandMap -> EventFunc
 onMessage cmds s msg =
     case BSC.words (mMsg msg) of
+        (name:"+1":_) -> applyCmd addKarma $ sanitize name
         (cmd:args)     | "!" `isPrefixOf` cmd
                       -> maybe (pure ()) (`applyCmd` args) $
                            M.lookup (BS.tail cmd) cmds
