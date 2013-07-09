@@ -46,6 +46,7 @@ echo = respond . BSC.unwords
 
 inspace :: [ByteString] -> EventEnv ()
 inspace args = do
+    url <- asks statusUrl
     resp <- lift $ simpleHTTP (getRequest url) >>= getResponseBody
 
     let obj    = decode $ LBS.pack resp
@@ -64,8 +65,6 @@ inspace args = do
                   (obj >>= parseMaybe (.: "members") :: Maybe Int)
 
     respondNick $ opener <> nicks
-  where
-    url = "http://status.bckspc.de/status.php?response=json"
 
 
 pizza :: [ByteString] -> EventEnv ()
@@ -77,9 +76,11 @@ pizza args =
     notifyIn t = do
         s <- asks server
         m <- asks msg
+        url <- asks statusUrl
+        file <- asks karmaFile
         lift . forkIO $ do
             threadDelay t
-            runEnv (respondNick "Time is up!") s m
+            runEnv (respondNick "Time is up!") url file s m
         respondNick "I won't forget it!"
 
     error = respondNick "Could not parse duration"
@@ -156,7 +157,7 @@ karmatop nums =
 
 onKarmaFile :: (FilePath -> IO a) -> (a -> EventEnv ()) -> EventEnv ()
 onKarmaFile io action =
-    lift (try $ io "./karma") >>= either errorResponse action
+    asks karmaFile >>= lift . try . io >>= either errorResponse action
 
 
 prettify :: [(ByteString, ByteString)] -> ByteString

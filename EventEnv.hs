@@ -13,7 +13,7 @@ module EventEnv
 
 import           Control.Monad
 import           Control.Monad.Trans.Reader
-import           Control.Monad.Trans.Class     (lift)
+import           Control.Monad.Trans.Class  (lift)
 import           Control.Applicative
 import           Data.Maybe
 import           Data.Monoid
@@ -21,14 +21,19 @@ import           Data.ByteString            (ByteString)
 import           Network.SimpleIRC
 
 
-data MsgEnv = MsgEnv { server :: MIrc, msg :: IrcMessage }
+data MsgEnv = MsgEnv
+            { server    :: MIrc
+            , msg       :: IrcMessage
+            , statusUrl :: String
+            , karmaFile :: String
+            }
 
 
 type EventEnv a = ReaderT MsgEnv IO a
           -- deriving (Functor, Applicative, Monad, MonadReader MsgEnv, MonadIO)
 
-runEnv :: EventEnv () -> EventFunc
-runEnv env s msg = runReaderT env $ MsgEnv s msg
+runEnv :: EventEnv () -> String -> String -> EventFunc
+runEnv env url file s msg = runReaderT env $ MsgEnv s msg url file
 
 
 respond :: ByteString -> EventEnv ()
