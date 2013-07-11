@@ -134,11 +134,11 @@ karma nicks =
         then do
           n <- asks $ fromJust . mNick . msg
           let points = lookup (sanitize n) entries
-          return $ maybe
-                      "You have no karma"
-                      (\ps -> "You have" <> ps <> " karma points")
+          pure $ maybe
+                   "You have no karma"
+                   (\ps -> "You have" <> ps <> " karma points")
                       points
-        else return . prettify $ filter
+        else pure . prettify $ filter
                                   (flip elem (map sanitize nicks) . fst)
                                   entries
 

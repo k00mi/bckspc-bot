@@ -30,7 +30,7 @@ main = do
                putStr "Error reading config file: "
                putStrLn err
                exitFailure
-             Right cfg -> return cfg
+             Right cfg -> pure cfg
     connect ircCfg { cChannels = ["#backspace"]
                    , cEvents   = [Privmsg $ onMessage commands cfg]
                    , cUsername = "bckspc"
