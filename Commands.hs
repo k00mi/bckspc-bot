@@ -27,6 +27,7 @@ import           Data.Aeson
 import           Data.Aeson.Types           (parseMaybe)
 
 import EventEnv
+import Utils
 
 
 type CommandMap = M.Map ByteString ([ByteString] -> EventEnv ())
@@ -132,12 +133,14 @@ karma nicks =
       if null nicks
         then do
           n <- asks $ fromJust . mNick . msg
-          let points = lookup n entries
+          let points = lookup (sanitize n) entries
           return $ maybe
                       "You have no karma"
                       (\ps -> "You have" <> ps <> " karma points")
                       points
-        else return . prettify $ filter (flip elem nicks . fst) entries
+        else return . prettify $ filter
+                                  (flip elem (map sanitize nicks) . fst)
+                                  entries
 
 
 karmatop :: [ByteString] -> EventEnv ()
