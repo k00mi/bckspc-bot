@@ -16,7 +16,7 @@ import Utils
 import Config
 
 
-ircCfg = mkDefaultConfig "chat.freenode.net" "koomis-bot"
+ircCfg = mkDefaultConfig "chat.freenode.net" "bckspc-bot"
 
 main :: IO ()
 main = do
@@ -31,7 +31,7 @@ main = do
                putStrLn err
                exitFailure
              Right cfg -> return cfg
-    connect ircCfg { cChannels = ["#koomis-bot"]
+    connect ircCfg { cChannels = ["#backspace"]
                    , cEvents   = [Privmsg $ onMessage commands cfg]
                    , cUsername = "bckspc"
                    , cRealname = "bckspc"
