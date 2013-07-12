@@ -1,4 +1,5 @@
 {
 "statusUrl": "http://status.bckspc.de/status.php?response=json",
-"karmaFile": "./karma"
+"karmaFile": "./karma",
+"channel":   "#backspace"
 }

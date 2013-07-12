@@ -10,7 +10,11 @@ import           Data.Aeson.TH
 import qualified Data.ByteString.Lazy       as BS
 
 
-data Config = Config { statusUrl :: String, karmaFile :: FilePath }
+data Config = Config
+            { statusUrl :: String
+            , karmaFile :: FilePath
+            , channel   :: String
+            }
 
 $(deriveJSON id ''Config)
 

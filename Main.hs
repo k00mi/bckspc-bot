@@ -31,7 +31,7 @@ main = do
                putStrLn err
                exitFailure
              Right cfg -> pure cfg
-    connect ircCfg { cChannels = ["#backspace"]
+    connect ircCfg { cChannels = [channel cfg]
                    , cEvents   = [Privmsg $ onMessage commands cfg]
                    , cUsername = "bckspc"
                    , cRealname = "bckspc"
@@ -42,7 +42,7 @@ main = do
 
 
 onMessage :: CommandMap -> Config -> EventFunc
-onMessage cmds (Config url file) s msg =
+onMessage cmds (Config url file chan) s msg =
     case BSC.words (mMsg msg) of
         (name:"+1":_) -> applyCmd addKarma $ sanitize name
         (cmd:args)     | "!" `isPrefixOf` cmd
