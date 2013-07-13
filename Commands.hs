@@ -38,6 +38,7 @@ commands = M.fromList [ ("echo", echo)
                       , ("pizza", pizza)
                       , ("karma", karma)
                       , ("karmatop", karmatop)
+                      , ("alarm", alarm)
                       ]
 
 
@@ -171,3 +172,7 @@ prettify = BSC.intercalate ", " . map go
 
 errorResponse :: SomeException -> EventEnv ()
 errorResponse = respond . ("Error: " <>) . pack . show
+
+
+alarm :: [ByteString] -> EventEnv ()
+alarm = lift . broadcast "irc_alarm" . BSC.unwords
