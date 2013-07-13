@@ -25,6 +25,10 @@ handy things.
   <dt>!karmatop NUM</dt>
   <dd>List the top NUM karma scorers. Default is 3.</dd>
 
+  <dt>!alarm MSG</dt>
+  <dd>Broadcasts MSG in the local network.
+      Other services may display MSG on the LED-board or similar.<\dd>
+
   <dt>!echo [ARGS]</dt>
   <dd>Echo the arguments.</dd>
 </dl>
