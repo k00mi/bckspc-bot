@@ -45,6 +45,9 @@ The following fields are accepted:
   <dt>karmaFile</dt>
   <dd>Path to the file in which karma scores are saved.
       The file must exist.</dd>
+
+  <dt>channel</dt>
+  <dd>The channel the bot should join.</dd>
 </dl>
 
 See [the provided example file](cfg.json).
