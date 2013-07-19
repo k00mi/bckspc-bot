@@ -1,11 +1,13 @@
 {-# LANGUAGE OverloadedStrings, TupleSections #-}
 
 import           Control.Applicative
+import           Control.Monad
 import           Data.Maybe
 import           Data.ByteString            (isPrefixOf)
 import qualified Data.ByteString            as BS
 import qualified Data.ByteString.Char8      as BSC
 import qualified Data.Map                   as M
+import           Control.Concurrent         (forkIO)
 import           System.Environment         (getArgs)
 import           System.Exit                (exitFailure)
 import           Network.SimpleIRC
@@ -14,6 +16,7 @@ import EventEnv
 import Commands
 import Utils
 import Config
+import Monitor
 
 
 ircCfg = mkDefaultConfig "chat.freenode.net" "bckspc-bot"
@@ -31,14 +34,18 @@ main = do
                putStrLn err
                exitFailure
              Right cfg -> pure cfg
-    connect ircCfg { cChannels = [channel cfg]
+    res <- connect
+            ircCfg { cChannels = [channel cfg]
                    , cEvents   = [Privmsg $ onMessage commands cfg]
                    , cUsername = "bckspc"
                    , cRealname = "bckspc"
                    }
-            False
             True
-    putStrLn "exiting..."
+            True
+    either
+      ioError
+      (void . monitor cfg)
+      res
 
 
 onMessage :: CommandMap -> Config -> EventFunc
