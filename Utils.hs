@@ -6,6 +6,7 @@ module Utils
   , getJSON
   , getURL
   , leftMap
+  , getNumericResponse
   ) where
 
 import           Control.Monad
@@ -15,6 +16,8 @@ import           Data.Char                  (toLower, isLetter)
 import           Data.ByteString            (ByteString)
 import qualified Data.ByteString.Char8      as BS
 import qualified Data.ByteString.Lazy       as LBS
+import           Control.Concurrent.MVar
+import           Network.SimpleIRC
 import           Network.Socket             hiding (sendTo)
 import           Network.Socket.ByteString  (sendTo)
 import           Network.BSD                (getProtocolNumber)
@@ -53,3 +56,12 @@ getJSON url parser = ((parseEither parser <=< eitherDecode) =<<) <$> getURL url
 leftMap :: (a -> b) -> Either a c -> Either b c
 leftMap f (Left x)  = Left $ f x
 leftMap _ (Right x) = Right x
+
+
+getNumericResponse :: MIrc -> ByteString -> IO () -> IO ByteString
+getNumericResponse serv code command = do
+    respVar <- newEmptyMVar
+    eventID <- addEvent serv . Numeric $ \_ msg ->
+                  when (mCode msg == code) $ putMVar respVar (mMsg msg)
+    command
+    takeMVar respVar <* remEvent serv eventID
