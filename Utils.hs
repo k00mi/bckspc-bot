@@ -29,7 +29,9 @@ import           Data.Aeson.Types           (parseEither, FromJSON, Parser)
 
 
 sanitize :: ByteString -> ByteString
-sanitize = BS.map toLower . fst . BS.breakEnd isLetter
+sanitize = BS.map toLower
+         . BS.dropWhile (not . isLetter)
+         . fst . BS.breakEnd isLetter
 
 
 broadcast :: ByteString -> ByteString -> IO ()
