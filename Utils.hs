@@ -7,10 +7,12 @@ module Utils
   , getURL
   , leftMap
   , getNumericResponse
+  , isPM
   ) where
 
 import           Control.Monad
 import           Control.Applicative
+import           Data.Maybe                 (fromMaybe)
 import           Data.Monoid                ((<>))
 import           Data.Char                  (toLower, isLetter)
 import           Data.ByteString            (ByteString)
@@ -67,3 +69,10 @@ getNumericResponse serv code command = do
                   when (mCode msg == code) $ putMVar respVar (mMsg msg)
     command
     takeMVar respVar <* remEvent serv eventID
+
+
+isPM :: IrcMessage -> Bool
+isPM msg = fromMaybe False $ do
+    nick   <- mNick msg
+    (nick ==) <$> mOrigin msg
+
