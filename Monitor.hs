@@ -11,7 +11,7 @@ import           Data.Char                  (isSpace)
 import           Data.ByteString.Char8      (ByteString, breakEnd, pack)
 import qualified Data.ByteString.Char8      as BS
 import           Network.SimpleIRC
-import           Data.IORef                 (newIORef, readIORef, writeIORef)
+import           Data.IORef
 import           Data.Aeson                 ((.:))
 import qualified Data.Map                   as M
 
