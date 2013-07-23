@@ -54,7 +54,9 @@ getURL url =
 
 
 getJSON :: FromJSON a => String -> (a -> Parser b) -> IO (Either String b)
-getJSON url parser = ((parseEither parser <=< eitherDecode) =<<) <$> getURL url
+getJSON url parser =
+    leftMap ("getJSON: " ++) . ((parseEither parser <=< eitherDecode) =<<)
+    <$> getURL url
 
 
 leftMap :: (a -> b) -> Either a c -> Either b c
