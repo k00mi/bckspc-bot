@@ -17,14 +17,11 @@ import           Data.Char                  (isDigit, isSpace)
 import           Data.ByteString            (ByteString, isPrefixOf)
 import           Data.ByteString.Char8      (pack, unpack, snoc)
 import qualified Data.ByteString.Char8      as BSC
-import qualified Data.ByteString.Lazy.Char8 as LBS
 import qualified Data.Map                   as M
 import           Control.Concurrent         (forkIO, threadDelay)
 import           Control.Exception          (try, SomeException)
 import           Network.SimpleIRC
-import           Network.HTTP
 import           Data.Aeson
-import           Data.Aeson.Types           (parseMaybe)
 
 import EventEnv
 import Utils
@@ -47,26 +44,20 @@ echo = respond . BSC.unwords
 
 
 inspace :: [ByteString] -> EventEnv ()
-inspace args = do
+inspace _ = do
     url <- asks statusUrl
-    resp <- lift $ simpleHTTP (getRequest url) >>= getResponseBody
-
-    let obj    = decode $ LBS.pack resp
-
-        nicks  = maybe
-                  "Error fetching nicknames"
-                  BSC.unwords
-                  (obj >>= parseMaybe
-                            ((.: "members_present") >=> mapM (.: "nickname")))
-
-        opener = maybe
-                  "Members present: "
-                  (\x -> if x == 0
-                          then "Backspace is empty"
-                          else pack (show x) <> " members present: ")
-                  (obj >>= parseMaybe (.: "members") :: Maybe Int)
-
-    respondNick $ opener <> nicks
+    res <- lift . getJSON url $ \obj ->
+             (,) <$>  obj .: "members"
+                 <*> (obj .: "members_present" >>= mapM (.: "nickname"))
+    let response =
+          case res of
+            Left err -> "Error retrieving JSON: " <> pack err
+            Right (num, nicks)
+                | num == (0 :: Int) -> "Backspace is empty"
+                | otherwise         -> pack (show num)
+                                       <> " members present: "
+                                       <> BSC.unwords nicks
+    respondNick response
 
 
 pizza :: [ByteString] -> EventEnv ()
