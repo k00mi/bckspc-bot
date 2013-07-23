@@ -33,6 +33,13 @@ handy things.
   <dd>Echo the arguments.</dd>
 </dl>
 
+## Other features
+
+* Append "open"/"close" to the topic, depending on whether someone is currently
+  present.
+
+* Voice members who are currently in the space.
+
 ## Configuration
 
 bckspc-bot requires a JSON configuration file that is passed as first argument.
