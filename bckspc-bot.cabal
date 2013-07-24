@@ -16,6 +16,7 @@ build-type:          Simple
 cabal-version:       >=1.8
 
 executable bckspc-bot
+  hs-source-dirs: src
   main-is: Main.hs
   other-modules: Commands, Utils, EventEnv, Config, Monitor
   build-depends: base ==4.6.*,
