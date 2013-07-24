@@ -2,7 +2,7 @@
 
 module EventEnv
   ( MsgEnv(..)
-  , EventEnv(..)
+  , EventEnv
   , runEnv
   , lift
   , respond
@@ -11,7 +11,6 @@ module EventEnv
   , asks
   ) where
 
-import           Control.Monad
 import           Control.Monad.Trans.Reader
 import           Control.Monad.Trans.Class  (lift)
 import           Control.Applicative
@@ -30,10 +29,10 @@ data MsgEnv = MsgEnv
 
 
 type EventEnv a = ReaderT MsgEnv IO a
-          -- deriving (Functor, Applicative, Monad, MonadReader MsgEnv, MonadIO)
+
 
 runEnv :: EventEnv () -> String -> String -> EventFunc
-runEnv env url file s msg = runReaderT env $ MsgEnv s msg url file
+runEnv env url file s message = runReaderT env $ MsgEnv s message url file
 
 
 respond :: ByteString -> EventEnv ()

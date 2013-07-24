@@ -7,7 +7,6 @@ import           Data.ByteString            (isPrefixOf)
 import qualified Data.ByteString            as BS
 import qualified Data.ByteString.Char8      as BSC
 import qualified Data.Map                   as M
-import           Control.Concurrent         (forkIO)
 import           System.Environment         (getArgs)
 import           System.Exit                (exitFailure)
 import           Network.SimpleIRC
@@ -19,6 +18,7 @@ import Config
 import Monitor
 
 
+ircCfg :: IrcConfig
 ircCfg = mkDefaultConfig "chat.freenode.net" "bckspc-bot"
 
 main :: IO ()
@@ -49,12 +49,12 @@ main = do
 
 
 onMessage :: CommandMap -> Config -> EventFunc
-onMessage cmds (Config url file chan) s msg =
-    case BSC.words (mMsg msg) of
+onMessage cmds (Config url file _) s message =
+    case BSC.words (mMsg message) of
         (name:"+1":_) -> applyCmd addKarma $ sanitize name
         (cmd:args)     | "!" `isPrefixOf` cmd
                       -> maybe (pure ()) (`applyCmd` args) $
                            M.lookup (BS.tail cmd) cmds
         _             -> pure ()
   where
-    applyCmd c args = runEnv (c args) url file s msg
+    applyCmd c args = runEnv (c args) url file s message

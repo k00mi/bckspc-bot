@@ -64,7 +64,7 @@ pizza :: [ByteString] -> EventEnv ()
 pizza args =
     if null args
       then notifyIn $ mins 15
-      else maybe error notifyIn . getTime $ head args
+      else maybe parseErr notifyIn . getTime $ head args
   where
     notifyIn t = do
         s <- asks server
@@ -76,7 +76,7 @@ pizza args =
             runEnv (respondNick "Time is up!") url file s m
         respondNick "I won't forget it!"
 
-    error = respondNick "Could not parse duration"
+    parseErr = respondNick "Could not parse duration"
 
     getTime str = do
         (numStr, suffix) <- BSC.unsnoc str
