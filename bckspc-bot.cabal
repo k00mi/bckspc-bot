@@ -29,4 +29,7 @@ executable bckspc-bot
                  network
   extensions: TemplateHaskell,
               OverloadedStrings
-  ghc-options: -Wall -fno-warn-unused-do-bind
+  ghc-options: -Wall
+               -fno-warn-unused-do-bind
+               -fno-warn-unused-do-bind
+               -fno-warn-type-defaults
