@@ -63,7 +63,7 @@ The following fields are accepted:
 
   <dt>pidDir</dt>
   <dd>Optional. The directory in which the PID file is created.
-      Defalut is /var/run.</dd>
+      Default is /var/run.</dd>
 </dl>
 
 See [the provided example file](cfg.json).
