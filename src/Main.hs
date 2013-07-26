@@ -38,6 +38,7 @@ bot :: Config -> CreateDaemon ()
 bot cfg = simpleDaemon
             { program          = const $ startBot cfg
             , user             = Just "ircbot"
+            , pidfileDirectory = pidDir cfg
             }
 
 startBot :: Config -> IO ()
@@ -57,7 +58,7 @@ startBot cfg = do
 
 
 onMessage :: CommandMap -> Config -> EventFunc
-onMessage cmds (Config url file chan) s msg =
+onMessage cmds (Config url file chan _) s msg =
     case BSC.words (mMsg msg) of
         (name:"+1":_) -> applyCmd addKarma $ sanitize name
         (cmd:args)     | "!" `isPrefixOf` cmd
