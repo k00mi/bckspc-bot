@@ -6,6 +6,10 @@ bckspc-bot is an IRC bot for [backspace][1]'s channel on freenode (#backspace).
 It provides various features to interact with space infrastructure and other
 handy things.
 
+## Startup
+
+bckspc-bot is a daemon and supports the usual start/stop/restart commands.
+
 ## Commands
 
 <dl>
@@ -42,7 +46,8 @@ handy things.
 
 ## Configuration
 
-bckspc-bot requires a JSON configuration file that is passed as first argument.
+bckspc-bot requires a JSON configuration file whose location is read from the
+BOT_CONFIG environment variable.
 The following fields are accepted:
 
 <dl>
@@ -55,6 +60,10 @@ The following fields are accepted:
 
   <dt>channel</dt>
   <dd>The channel the bot should join.</dd>
+
+  <dt>pidDir</dt>
+  <dd>Optional. The directory in which the PID file is created.
+      Defalut is /var/run.</dd>
 </dl>
 
 See [the provided example file](cfg.json).

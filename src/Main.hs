@@ -7,9 +7,9 @@ import           Data.ByteString            (isPrefixOf)
 import qualified Data.ByteString            as BS
 import qualified Data.ByteString.Char8      as BSC
 import qualified Data.Map                   as M
-import           System.Environment         (getArgs)
-import           System.Exit                (exitFailure)
+import           System.Environment         (lookupEnv)
 import           Network.SimpleIRC
+import           System.Posix.Daemonize
 
 import EventEnv
 import Commands
@@ -23,17 +23,26 @@ ircCfg = mkDefaultConfig "chat.freenode.net" "bckspc-bot"
 
 main :: IO ()
 main = do
-    mArg <- listToMaybe <$> getArgs
-    userCfg <- maybe
-                (putStrLn "Missing argument: path to config" >> exitFailure)
-                readConfigFile
-                mArg
-    cfg <- case userCfg of
-             Left err -> do
-               putStr "Error reading config file: "
-               putStrLn err
-               exitFailure
-             Right cfg -> pure cfg
+    mPath <- lookupEnv "BOT_CONFIG"
+    eCfg  <- maybe
+              (fatalError "BOT_CONFIG environment variable not set")
+              readConfigFile
+              mPath
+    cfg   <- either
+              (fatalError . ("Error reading config file: " ++))
+              pure
+              eCfg
+    serviced $ bot cfg
+
+bot :: Config -> CreateDaemon ()
+bot cfg = simpleDaemon
+            { program          = const $ startBot cfg
+            , user             = Just "ircbot"
+            , pidfileDirectory = pidDir cfg
+            }
+
+startBot :: Config -> IO ()
+startBot cfg = do
     res <- connect
             ircCfg { cChannels = [channel cfg]
                    , cEvents   = [Privmsg $ onMessage commands cfg]
@@ -41,7 +50,7 @@ main = do
                    , cRealname = "bckspc"
                    }
             True
-            True
+            False
     either
       ioError
       (void . monitor cfg)
@@ -49,7 +58,7 @@ main = do
 
 
 onMessage :: CommandMap -> Config -> EventFunc
-onMessage cmds (Config url file _) s message =
+onMessage cmds (Config url file _ _) s message =
     case BSC.words (mMsg message) of
         (name:"+1":_) -> applyCmd addKarma $ sanitize name
         (cmd:args)     | "!" `isPrefixOf` cmd
