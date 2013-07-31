@@ -4,14 +4,12 @@ module Monitor (monitor) where
 
 import           Control.Monad
 import           Control.Applicative
-import           Control.Concurrent.MVar    (newEmptyMVar, putMVar, takeMVar)
 import           Control.Concurrent         (threadDelay)
 import           Data.Monoid                ((<>))
 import           Data.Char                  (isSpace)
 import           Data.ByteString.Char8      (ByteString, breakEnd, pack)
 import qualified Data.ByteString.Char8      as BS
 import           Network.SimpleIRC
-import           Data.IORef
 import           Data.Aeson                 ((.:))
 import qualified Data.Map                   as M
 
@@ -23,21 +21,19 @@ data Mode = None | Voice | Op deriving (Eq)
 
 
 -- | Check the status API every 5 minutes to see if members are present.
--- Change the channel topic accordingly.
+-- Change channel topic and voice accordingly.
 monitor :: Config -> MIrc -> IO ()
-monitor cfg serv = do
-    topicVar <- newIORef "closed"
-    forever $ do
-      threadDelay $ 10^6 * 60 * 5 -- 5 minutes
-      resp <- getJSON (statusUrl cfg) $ \obj ->
-                (,) <$>  obj .: "members"
-                    <*> (obj .: "members_present" >>= mapM (.: "nickname"))
-      either
-          (putStrLn . ("Error retrieving JSON: " ++))
-          (\(numMems, present) -> do
-              changeTopic cfg serv numMems topicVar
-              changeVoice cfg serv present)
-          resp
+monitor cfg serv = forever $ do
+    threadDelay $ 10^6 * 60 * 5 -- 5 minutes
+    resp <- getJSON (statusUrl cfg) $ \obj ->
+              (,) <$>  obj .: "members"
+                  <*> (obj .: "members_present" >>= mapM (.: "nickname"))
+    either
+        (putStrLn . ("Error retrieving JSON: " ++))
+        (\(numMems, present) -> do
+            changeTopic cfg serv numMems
+            changeVoice cfg serv present)
+        resp
 
 
 -- | Voice channel members who are currently present, devoice those who left.
@@ -56,30 +52,14 @@ changeVoice cfg serv present = do
 
 
 -- | Set a new topic if open/close status changed.
-changeTopic :: Config -> MIrc -> Int -> IORef ByteString -> IO ()
-changeTopic cfg serv n var = do
-    let currentTop = if n == 0
-                      then "closed"
-                      else "open"
-    oldTop <- readIORef var
-    when (oldTop /= currentTop) $ do
-        setTopic cfg serv currentTop
-        writeIORef var currentTop
-
-
--- | Get the current topic by sending TOPIC, adding an event on the response
--- (332) and removing it immediately after receiving the message (via MVar).
--- Then change the last word of the topic (should be the status) to the new
--- value.
-setTopic :: Config -> MIrc -> ByteString -> IO ()
-setTopic cfg serv current = do
-    topicFullVar <- newEmptyMVar
-    eventID <- addEvent serv . Numeric $ \_ msg ->
-                 when (mCode msg == "332") $ putMVar topicFullVar (mMsg msg)
-    sendTopic Nothing
-    (topicStatic, _) <- breakEnd isSpace <$> takeMVar topicFullVar
-    remEvent serv eventID
-    sendTopic . Just $ topicStatic <> current
+changeTopic :: Config -> MIrc -> Int -> IO ()
+changeTopic cfg serv num = do
+    topic <- getNumericResponse serv "332" $ sendTopic Nothing
+    let (static, current) = breakEnd isSpace topic
+        new = if num == 0 then "closed" else "open"
+    if current `notElem` ["closed", "open"]
+      then putStrLn "Topic not correctly formatted"
+      else when (current /= new) . sendTopic . Just $ static <> new
   where
     sendTopic = sendCmd serv . MTopic (pack $ channel cfg)
 
