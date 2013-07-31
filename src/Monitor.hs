@@ -19,6 +19,9 @@ import Config
 import Utils
 
 
+data Mode = None | Voice | Op deriving (Eq)
+
+
 -- | Check the status API every 5 minutes to see if members are present.
 -- Change the channel topic accordingly.
 monitor :: Config -> MIrc -> IO ()
@@ -42,14 +45,15 @@ changeVoice :: Config -> MIrc -> [ByteString] -> IO ()
 changeVoice cfg serv present = do
     nicks <- getNicks (channel cfg) serv
     let (there, notThere) = M.partitionWithKey (\n _ -> n `elem` present) nicks
-        remove = M.filter fst notThere
-        give   = M.filter (not . fst) there
+        remove = M.filter ((== Voice) . fst) notThere
+        give   = M.filter ((== None) . fst) there
 
     let setMode mode toSet = unless (M.null toSet) $
             sendCmd serv $ MMode (pack $ channel cfg) mode $
                 Just (BS.unwords $ map snd $ M.elems toSet)
     setMode "+v" give
     setMode "-v" remove
+
 
 -- | Set a new topic if open/close status changed.
 changeTopic :: Config -> MIrc -> Int -> IORef ByteString -> IO ()
@@ -82,12 +86,15 @@ setTopic cfg serv current = do
 
 -- | Get the members of the channel in a map from normalized nick to a pair
 -- of voice status and actual name
-getNicks :: String -> MIrc -> IO (M.Map ByteString (Bool,ByteString))
+getNicks :: String -> MIrc -> IO (M.Map ByteString (Mode,ByteString))
 getNicks chan serv =
     M.fromList . map mkEntry . BS.words <$> getNumericResponse serv "353" cmd
   where
     cmd = sendRaw serv $ "NAMES " <> pack chan
     mkEntry rawNick =
-        let voiced = BS.head rawNick `elem` "+@"
-            nick = if voiced then BS.tail rawNick else rawNick
-        in (sanitize rawNick, (voiced, nick))
+        let mode = case BS.head rawNick of
+                       '@' -> Op;
+                       '+' -> Voice;
+                        _  -> None;
+            nick = if mode /= None then BS.tail rawNick else rawNick
+        in (sanitize rawNick, (mode, nick))
