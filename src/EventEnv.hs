@@ -9,6 +9,7 @@ module EventEnv
   , respondNick
   , ask
   , asks
+  , runReaderT
   ) where
 
 import           Control.Monad.Trans.Reader

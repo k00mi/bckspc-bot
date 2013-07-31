@@ -1,4 +1,4 @@
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE OverloadedStrings, TupleSections, MultiWayIf #-}
 
 module Commands
   ( commands
@@ -13,15 +13,22 @@ import           Data.Maybe
 import           Data.List                  (sortBy)
 import           Data.Ord                   (comparing, Down(..))
 import           Text.Read                  (readMaybe)
-import           Data.Char                  (isDigit, isSpace)
-import           Data.ByteString            (ByteString, isPrefixOf)
-import           Data.ByteString.Char8      (pack, unpack, snoc)
+import           Data.Char                  (isDigit)
+import           Data.ByteString            (ByteString)
+import           Data.ByteString.Char8      (pack, unpack)
 import qualified Data.ByteString.Char8      as BSC
+import qualified Data.ByteString.Lazy       as BL
+import           Data.Text                  (Text)
+import           Data.Text.Encoding         (decodeUtf8, encodeUtf8)
 import qualified Data.Map                   as M
+import qualified Data.HashMap.Strict        as HM
 import           Control.Concurrent         (forkIO, threadDelay)
-import           Control.Exception          (try, SomeException)
+import           System.IO.Error            (tryIOError)
+import           System.IO
 import           Network.SimpleIRC
 import           Data.Aeson
+import           Data.Aeson.Types
+import           Data.Attoparsec.Number     (Number(..))
 
 import EventEnv
 import Utils
@@ -94,75 +101,82 @@ pizza args =
 
 
 addKarma :: ByteString -> EventEnv ()
-addKarma nick = flip onKarmaFile pure $ \file -> do
-    ls <- BSC.lines <$> BSC.readFile file
-    let (new, present) = foldl checkAdd (BSC.empty, False) ls
-    BSC.writeFile file $
-        if present
-          then new
-          else new <> nick <> " 1\n"
+addKarma nick = do
+    message <- asks msg
+    sender  <- asks $ sanitize . fromJust . mNick . msg
+    let nick' = sanitize nick
+    if | isPM message -> respondNick "You can only give karma in the channel"
+       | nick' == sender -> respondNick "You can't give yourself karma"
+       | otherwise -> onKarmaFile $
+            pure . Just . HM.insertWith add (decodeUtf8 nick') (Number 1)
   where
-    checkAdd (file, True) bs = (file <> bs `snoc` '\n', True)
-    checkAdd (file, _)    bs
-      | nick `isPrefixOf` bs =
-          let new :: Int
-              new = (+1) . read . unpack $ BSC.dropWhile (not . isSpace) bs
-          in (file <> nick <> pack (' ' : show new) `snoc` '\n', True)
-      | otherwise            = (file <> bs `snoc` '\n', False)
+    add (Number x) (Number y) = Number $ x + y
+    add _ _ = error "add: Adding non-Numbers"
 
 
 karma :: [ByteString] -> EventEnv ()
-karma nicks =
-    onKarmaFile
-      BSC.readFile
-      ( respondNick <=< mkResponse
-      . map (BSC.break isSpace)
-      . BSC.lines
-      )
-  where
-    mkResponse :: [(ByteString, ByteString)] -> EventEnv ByteString
-    mkResponse entries =
-      if null nicks
-        then do
-          n <- asks $ fromJust . mNick . msg
-          let points = lookup (sanitize n) entries
-          pure $ maybe
-                   "You have no karma"
-                   (\ps -> "You have" <> ps <> " karma points")
-                      points
-        else pure . prettify $ filter
-                                  (flip elem (map sanitize nicks) . fst)
-                                  entries
+karma nicks = onKarmaFile $ \obj -> do
+    sender <- asks $ fromJust . mNick . msg
+    let resp = flip parseMaybe obj $ \o ->
+          if not $ null nicks
+            then fmap toString $
+                 forM nicks $ \n ->
+                    let nick = decodeUtf8 $ sanitize n
+                    in (nick,) <$> o .:? nick .!= 0
+            else do
+              score <- o .:? decodeUtf8 sender :: Parser (Maybe Integer)
+              return $ maybe
+                "You have no karma yet."
+                (\n -> "You have " <> pack (show n) <> " karma.")
+                score
+    maybe
+      (respondNick "Error parsing karma file")
+      respondNick
+      resp
+    pure Nothing
 
 
 karmatop :: [ByteString] -> EventEnv ()
-karmatop nums =
-    onKarmaFile
-      BSC.readFile
-      ( respondNick
-      . prettify
+karmatop nums = onKarmaFile $
+      (pure Nothing <*)
+      . respondNick
+      . toString
       . take n
-      . sortBy (comparing $ Down . (read :: String -> Int) . unpack . snd)
-      . map (BSC.break isSpace)
-      . BSC.lines
-      )
+      . sortBy (comparing $ Down . snd)
+      . map (\(name, Number (I x)) -> (name, x))
+      . HM.toList
   where
     n = fromMaybe 3 $ readMaybe . unpack =<< listToMaybe nums
 
 
-onKarmaFile :: (FilePath -> IO a) -> (a -> EventEnv ()) -> EventEnv ()
-onKarmaFile io action =
-    asks karmaFile >>= lift . try . io >>= either errorResponse action
+-- | @onKarmaFile action@ will parse the contents of the karma file and pass
+-- the resulting 'Object' to @action@. If @action@ returns a new one, the
+-- file will be replaced with that. If parsing the file fails, @action@ won't
+-- be called but an error message will be sent to IRC.
+onKarmaFile :: (Object -> EventEnv (Maybe Object)) -> EventEnv ()
+onKarmaFile action = do
+    file   <- asks karmaFile
+    msgenv <- ask
+    res <- lift . tryIOError . withFile file ReadWriteMode $ \h -> do
+        size    <- hFileSize h
+        content <- BL.hGet h (fromInteger size)
+        res     <- maybe
+                    (fail "Failed reading karma file")
+                    (\obj -> runReaderT (action obj) msgenv)
+                    (decode content)
+        maybe
+          (pure ())
+          ((hSeek h AbsoluteSeek 0 >>) . BL.hPut h . encode)
+          res
+    either
+      (respond . ("Error: " <>) . pack . show)
+      pure
+      res
 
 
-prettify :: [(ByteString, ByteString)] -> ByteString
-prettify = BSC.intercalate ", " . map go
-  where
-    go (nick, points) = (nick `BSC.snoc` ':') <> points
-
-
-errorResponse :: SomeException -> EventEnv ()
-errorResponse = respond . ("Error: " <>) . pack . show
+toString :: [(Text, Integer)] -> ByteString
+toString = BSC.intercalate ", " . map (\(nick, score) ->
+    encodeUtf8 nick <> ": " <> pack (show score))
 
 
 alarm :: [ByteString] -> EventEnv ()
