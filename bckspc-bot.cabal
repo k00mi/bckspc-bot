@@ -27,10 +27,14 @@ executable bckspc-bot
                  aeson ==0.6.*,
                  transformers == 0.3.*,
                  network,
-                 hdaemonize >= 0.4.4
+                 hdaemonize >= 0.4.4,
+                 unordered-containers,
+                 text,
+                 attoparsec
   extensions: TemplateHaskell,
-              OverloadedStrings
+              OverloadedStrings,
+              TupleSections,
+              MultiWayIf
   ghc-options: -Wall
-               -fno-warn-unused-do-bind
                -fno-warn-unused-do-bind
                -fno-warn-type-defaults
