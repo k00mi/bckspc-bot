@@ -6,6 +6,7 @@ import           Control.Monad
 import           Control.Applicative
 import           Control.Concurrent         (threadDelay)
 import           Data.Monoid                ((<>))
+import           Data.Foldable              (for_)
 import           Data.Char                  (isSpace)
 import           Data.ByteString.Char8      (ByteString, breakEnd, pack)
 import qualified Data.ByteString.Char8      as BS
@@ -43,10 +44,8 @@ changeVoice cfg serv present = do
     let (there, notThere) = M.partitionWithKey (\n _ -> n `elem` present) nicks
         remove = M.filter ((== Voice) . fst) notThere
         give   = M.filter ((== None) . fst) there
-
-    let setMode mode toSet = unless (M.null toSet) $
-            sendCmd serv $ MMode (pack $ channel cfg) mode $
-                Just (BS.unwords $ map snd $ M.elems toSet)
+        setMode mode toSet = for_ toSet $ \(_, nick) ->
+          sendCmd serv $ MMode (pack $ channel cfg) mode $ Just nick
     setMode "+v" give
     setMode "-v" remove
 
