@@ -29,6 +29,7 @@ import           Network.SimpleIRC
 import           Data.Aeson
 import           Data.Aeson.Types
 import           Data.Attoparsec.Number     (Number(..))
+import           System.Posix.Syslog
 
 import EventEnv
 import Utils
@@ -56,14 +57,15 @@ inspace _ = do
     res <- lift . getJSON url $ \obj ->
              (,) <$>  obj .: "members"
                  <*> (obj .: "members_present" >>= mapM (.: "nickname"))
-    let response =
-          case res of
-            Left err -> "Error retrieving JSON: " <> pack err
+    response <- case res of
+            Left err -> do
+              lift . syslog Warning $ "inspace: Error fetching JSON: " ++ err
+              pure $ "Error retrieving status information"
             Right (num, nicks)
-                | num == (0 :: Int) -> "Backspace is empty"
-                | otherwise         -> pack (show num)
-                                       <> " members present: "
-                                       <> BSC.unwords nicks
+                | num == (0 :: Int) -> pure $ "Backspace is empty"
+                | otherwise         -> pure $ pack (show num)
+                                            <> " members present: "
+                                            <> BSC.unwords nicks
     respondNick response
 
 
@@ -152,7 +154,7 @@ karmatop nums = onKarmaFile $
 -- | @onKarmaFile action@ will parse the contents of the karma file and pass
 -- the resulting 'Object' to @action@. If @action@ returns a new one, the
 -- file will be replaced with that. If parsing the file fails, @action@ won't
--- be called but an error message will be sent to IRC.
+-- be called but an error message will be sent to IRC and Syslog.
 onKarmaFile :: (Object -> EventEnv (Maybe Object)) -> EventEnv ()
 onKarmaFile action = do
     file   <- asks karmaFile
@@ -169,7 +171,9 @@ onKarmaFile action = do
           ((hSeek h AbsoluteSeek 0 >>) . BL.hPut h . encode)
           res
     either
-      (respond . ("Error: " <>) . pack . show)
+      (\err -> do
+        lift . syslog Warning $ "onKarmaFile: " ++ show err
+        respond "Could not read karma file.")
       pure
       res
 

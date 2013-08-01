@@ -13,6 +13,7 @@ import qualified Data.ByteString.Char8      as BS
 import           Network.SimpleIRC
 import           Data.Aeson                 ((.:))
 import qualified Data.Map                   as M
+import           System.Posix.Syslog
 
 import Config
 import Utils
@@ -30,7 +31,7 @@ monitor cfg serv = forever $ do
               (,) <$>  obj .: "members"
                   <*> (obj .: "members_present" >>= mapM (.: "nickname"))
     either
-        (putStrLn . ("Error retrieving JSON: " ++))
+        (syslog Warning . ("Error retrieving JSON: " ++))
         (\(numMems, present) -> do
             changeTopic cfg serv numMems
             changeVoice cfg serv present)
@@ -57,7 +58,7 @@ changeTopic cfg serv num = do
     let (static, current) = breakEnd isSpace topic
         new = if num == 0 then "closed" else "open"
     if current `notElem` ["closed", "open"]
-      then putStrLn "Topic not correctly formatted"
+      then syslog Warning "Topic not correctly formatted"
       else when (current /= new) . sendTopic . Just $ static <> new
   where
     sendTopic = sendCmd serv . MTopic (pack $ channel cfg)

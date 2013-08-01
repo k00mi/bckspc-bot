@@ -30,7 +30,8 @@ executable bckspc-bot
                  hdaemonize >= 0.4.4,
                  unordered-containers,
                  text,
-                 attoparsec
+                 attoparsec,
+                 hsyslog
   extensions: TemplateHaskell,
               OverloadedStrings,
               TupleSections,
