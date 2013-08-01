@@ -2,7 +2,7 @@
 
 import           Control.Applicative
 import           Control.Monad
-import           Data.Maybe
+import           Data.Foldable              (for_)
 import           Data.ByteString            (isPrefixOf)
 import qualified Data.ByteString            as BS
 import qualified Data.ByteString.Char8      as BSC
@@ -62,8 +62,7 @@ onMessage cmds (Config url file _ _) s message =
     case BSC.words (mMsg message) of
         (name:"+1":_) -> applyCmd addKarma $ sanitize name
         (cmd:args)     | "!" `isPrefixOf` cmd
-                      -> maybe (pure ()) (`applyCmd` args) $
-                           M.lookup (BS.tail cmd) cmds
+                      -> for_ (M.lookup (BS.tail cmd) cmds) (`applyCmd` args)
         _             -> pure ()
   where
     applyCmd c args = runEnv (c args) url file s message

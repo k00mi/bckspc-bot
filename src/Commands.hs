@@ -10,6 +10,7 @@ import           Control.Monad
 import           Control.Applicative
 import           Data.Monoid                ((<>))
 import           Data.Maybe
+import           Data.Foldable              (for_)
 import           Data.List                  (sortBy)
 import           Data.Ord                   (comparing, Down(..))
 import           Text.Read                  (readMaybe)
@@ -166,10 +167,7 @@ onKarmaFile action = do
                     (fail "Failed reading karma file")
                     (\obj -> runReaderT (action obj) msgenv)
                     (decode content)
-        maybe
-          (pure ())
-          ((hSeek h AbsoluteSeek 0 >>) . BL.hPut h . encode)
-          res
+        for_ res $ (hSeek h AbsoluteSeek 0 >>) . BL.hPut h . encode
     either
       (\err -> do
         lift . syslog Warning $ "onKarmaFile: " ++ show err
