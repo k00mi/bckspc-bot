@@ -64,6 +64,12 @@ The following fields are accepted:
   <dt>pidDir</dt>
   <dd>Optional. The directory in which the PID file is created.
       Default is /var/run.</dd>
+
+  <dt>nick</dt>
+  <dd>Optional. The nickname the bot should use. Defaults to "bckspc-bot".</dd>
+
+  <dt>password</dt>
+  <dd>Optional. The password to register with.</dt>
 </dl>
 
 See [the provided example file](cfg.json).

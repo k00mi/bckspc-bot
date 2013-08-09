@@ -13,6 +13,8 @@ data Config = Config
             , karmaFile :: FilePath
             , channel   :: String
             , pidDir    :: Maybe FilePath
+            , nick      :: String
+            , password  :: Maybe String
             }
 
 instance FromJSON Config where
@@ -21,6 +23,8 @@ instance FromJSON Config where
                            <*> v .:  "karmaFile"
                            <*> v .:  "channel"
                            <*> v .:? "pidDir"
+                           <*> v .:? "nick" .!= "bckspc-bot"
+                           <*> v .:? "password"
     parseJSON _          = empty
 
 readConfigFile :: FilePath -> IO (Either String Config)

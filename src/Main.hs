@@ -18,9 +18,6 @@ import Config
 import Monitor
 
 
-ircCfg :: IrcConfig
-ircCfg = mkDefaultConfig "chat.freenode.net" "bckspc-bot"
-
 main :: IO ()
 main = do
     mPath <- lookupEnv "BOT_CONFIG"
@@ -43,12 +40,15 @@ bot cfg = simpleDaemon
 
 startBot :: Config -> IO ()
 startBot cfg = do
-    res <- connect
-            ircCfg { cChannels = [channel cfg]
+    let ircCfg = (mkDefaultConfig "chat.freenode.net" $ nick cfg)
+                   { cChannels = [channel cfg]
                    , cEvents   = [Privmsg $ onMessage commands cfg]
                    , cUsername = "bckspc"
                    , cRealname = "bckspc"
+                   , cPass     = password cfg
                    }
+    res <- connect
+            ircCfg
             True
             False
     either
@@ -58,7 +58,7 @@ startBot cfg = do
 
 
 onMessage :: CommandMap -> Config -> EventFunc
-onMessage cmds (Config url file _ _) s message =
+onMessage cmds (Config url file _ _ _ _) s message =
     case BSC.words (mMsg message) of
         (name:"+1":_) -> applyCmd addKarma $ sanitize name
         (cmd:args)     | "!" `isPrefixOf` cmd
