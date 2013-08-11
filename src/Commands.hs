@@ -72,9 +72,9 @@ inspace _ = do
 
 pizza :: [ByteString] -> EventEnv ()
 pizza args =
-    if null args
-      then notifyIn $ mins 15
-      else maybe parseErr notifyIn . getTime $ head args
+    case args of
+      []    -> notifyIn $ mins 15
+      arg:_ -> maybe parseErr notifyIn $ getTime arg
   where
     notifyIn t = do
         s <- asks server
