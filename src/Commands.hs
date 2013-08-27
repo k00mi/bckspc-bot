@@ -66,7 +66,7 @@ inspace _ = do
                 | num == (0 :: Int) -> pure $ "Backspace is empty"
                 | otherwise         -> pure $ pack (show num)
                                             <> " members present: "
-                                            <> BSC.unwords nicks
+                                            <> BSC.intercalate ", " nicks
     respondNick response
 
 
