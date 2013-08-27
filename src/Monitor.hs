@@ -5,6 +5,7 @@ module Monitor (monitor) where
 import           Control.Monad
 import           Control.Applicative
 import           Control.Concurrent         (threadDelay)
+import           Control.Exception          (catch, IOException)
 import           Data.Monoid                ((<>))
 import           Data.Foldable              (for_)
 import           Data.Char                  (isSpace)
@@ -30,12 +31,13 @@ monitor cfg serv = forever $ do
     resp <- getJSON (statusUrl cfg) $ \obj ->
               (,) <$>  obj .: "members"
                   <*> (obj .: "members_present" >>= mapM (.: "nickname"))
-    either
-        (syslog Warning . ("Error retrieving JSON: " ++))
-        (\(numMems, present) -> do
+    case resp of
+      Left err -> syslog Warning $ "Error retrieving JSON: " ++ err
+      Right (numMems, present) -> do
             changeTopic cfg serv numMems
-            changeVoice cfg serv present)
-        resp
+            changeVoice cfg serv present
+          `catch`
+            \e -> syslog Warning $ "monitor: " ++ show (e :: IOException)
 
 
 -- | Voice channel members who are currently present, devoice those who left.
