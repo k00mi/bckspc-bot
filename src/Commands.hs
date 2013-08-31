@@ -92,6 +92,7 @@ pizza args =
           "s" -> Right $ secs num
           "m" -> Right $ mins num
           "h" -> Right $ hours num
+          ""  -> Right $ mins num
           _   -> Left "invalid suffix"
 
     secs  x = x * 10^6
