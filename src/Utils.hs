@@ -19,7 +19,6 @@ import           Data.ByteString            (ByteString)
 import           Data.Text                  (Text, dropAround)
 import qualified Data.Text                  as T
 import           Data.Text.Encoding         (encodeUtf8)
-import qualified Data.ByteString.Char8      as BS
 import qualified Data.ByteString.Lazy       as LBS
 import           Control.Concurrent.MVar
 import           Network.SimpleIRC
