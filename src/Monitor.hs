@@ -46,13 +46,13 @@ monitor cfg serv = forever $ do
 changeVoice :: Config -> MIrc -> [Text] -> IO ()
 changeVoice cfg serv present = do
     nicks <- getNicks (channel cfg) serv
-    let (there, notThere) = M.partitionWithKey (\n _ -> n `elem` present) nicks
+    let (there, notThere) = M.partition (\(_, n) -> n `elem` present) nicks
         remove = M.filter ((== Voice) . fst) notThere
         give   = M.filter ((== None) . fst) there
-        setMode mode toSet = for_ toSet $ \(_, nick) ->
+        setMode mode nicks = flip M.traverseWithKey nicks $ \nick _ ->
           sendCmd serv $ MMode (pack $ channel cfg) mode $ Just $ encodeUtf8 nick
     setMode "+v" give
-    setMode "-v" remove
+    setMode "-v" remove *> pure ()
 
 
 -- | Set a new topic if open/close status changed.
@@ -82,4 +82,4 @@ getNicks chan serv =
                        '+' -> Voice;
                         _  -> None;
             nick = if mode /= None then T.tail rawNick else rawNick
-        in (sanitize rawNick, (mode, nick))
+        in (nick, (mode, sanitize nick))
