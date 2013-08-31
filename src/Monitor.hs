@@ -7,7 +7,6 @@ import           Control.Applicative
 import           Control.Concurrent         (threadDelay)
 import           Control.Exception          (catch, IOException)
 import           Data.Monoid                ((<>))
-import           Data.Foldable              (for_)
 import           Data.Char                  (isSpace)
 import           Data.ByteString.Char8      (breakEnd, pack)
 import           Data.Text                  (Text)
