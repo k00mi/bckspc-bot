@@ -14,13 +14,11 @@ import           Data.Foldable              (for_)
 import           Data.List                  (sortBy)
 import           Data.Ord                   (comparing, Down(..))
 import           Text.Read                  (readMaybe)
-import           Data.Char                  (isDigit)
-import           Data.ByteString            (ByteString)
-import           Data.ByteString.Char8      (pack, unpack)
-import qualified Data.ByteString.Char8      as BSC
 import qualified Data.ByteString.Lazy       as BL
-import           Data.Text                  (Text)
-import           Data.Text.Encoding         (decodeUtf8, encodeUtf8)
+import           Data.Text                  (Text, pack, unpack)
+import qualified Data.Text                  as T
+import           Data.Text.Encoding         (decodeUtf8)
+import           Data.Text.Read             (decimal)
 import qualified Data.Map                   as M
 import qualified Data.HashMap.Strict        as HM
 import           Control.Concurrent         (forkIO, threadDelay)
@@ -36,7 +34,7 @@ import EventEnv
 import Utils
 
 
-type CommandMap = M.Map ByteString ([ByteString] -> EventEnv ())
+type CommandMap = M.Map Text ([Text] -> EventEnv ())
 
 commands :: CommandMap
 commands = M.fromList [ ("echo", echo)
@@ -48,11 +46,11 @@ commands = M.fromList [ ("echo", echo)
                       ]
 
 
-echo :: [ByteString] -> EventEnv ()
-echo = respond . BSC.unwords
+echo :: [Text] -> EventEnv ()
+echo = respond . T.unwords
 
 
-inspace :: [ByteString] -> EventEnv ()
+inspace :: [Text] -> EventEnv ()
 inspace _ = do
     url <- asks statusUrl
     res <- lift . getJSON url $ \obj ->
@@ -66,15 +64,15 @@ inspace _ = do
                 | num == (0 :: Int) -> pure $ "Backspace is empty"
                 | otherwise         -> pure $ pack (show num)
                                             <> " members present: "
-                                            <> BSC.intercalate ", " nicks
+                                            <> T.intercalate ", " nicks
     respondNick response
 
 
-pizza :: [ByteString] -> EventEnv ()
+pizza :: [Text] -> EventEnv ()
 pizza args =
     case args of
       []    -> notifyIn $ mins 15
-      arg:_ -> maybe parseErr notifyIn $ getTime arg
+      arg:_ -> either (const parseErr) notifyIn $ getTime arg
   where
     notifyIn t = do
         s <- asks server
@@ -89,42 +87,40 @@ pizza args =
     parseErr = respondNick "Could not parse duration"
 
     getTime str = do
-        (numStr, suffix) <- BSC.unsnoc str
-        if isDigit suffix
-          then fmap mins . readMaybe $ unpack str
-          else case suffix of
-                's' -> secs  <$> readMaybe (unpack numStr);
-                'm' -> mins  <$> readMaybe (unpack numStr);
-                'h' -> hours <$> readMaybe (unpack numStr);
-                 _  -> Nothing
+        (num, rest) <- decimal str
+        case rest of
+          "s" -> Right $ secs num
+          "m" -> Right $ mins num
+          "h" -> Right $ hours num
+          _   -> Left "invalid suffix"
 
     secs  x = x * 10^6
     mins  x = x * secs 60
     hours x = x * mins 60
 
 
-addKarma :: ByteString -> EventEnv ()
+addKarma :: Text -> EventEnv ()
 addKarma nick = do
     message <- asks msg
-    sender  <- asks $ sanitize . fromJust . mNick . msg
-    let nick' = sanitize nick
+    let sender = sanitize . decodeUtf8 . fromJust . mNick $ message
+        nick'  = sanitize nick
     if | isPM message -> respondNick "You can only give karma in the channel"
        | nick' == sender -> respondNick "You can't give yourself karma"
        | otherwise -> onKarmaFile $
-            pure . Just . HM.insertWith add (decodeUtf8 nick') (Number 1)
+            pure . Just . HM.insertWith add nick' (Number 1)
   where
     add (Number x) (Number y) = Number $ x + y
     add _ _ = error "add: Adding non-Numbers"
 
 
-karma :: [ByteString] -> EventEnv ()
+karma :: [Text] -> EventEnv ()
 karma nicks = onKarmaFile $ \obj -> do
     sender <- asks $ fromJust . mNick . msg
     let resp = flip parseMaybe obj $ \o ->
           if not $ null nicks
             then fmap toString $
                  forM nicks $ \n ->
-                    let nick = decodeUtf8 $ sanitize n
+                    let nick = sanitize n
                     in (nick,) <$> o .:? nick .!= 0
             else do
               score <- o .:? decodeUtf8 sender :: Parser (Maybe Integer)
@@ -139,7 +135,7 @@ karma nicks = onKarmaFile $ \obj -> do
     pure Nothing
 
 
-karmatop :: [ByteString] -> EventEnv ()
+karmatop :: [Text] -> EventEnv ()
 karmatop nums = onKarmaFile $
       (pure Nothing <*)
       . respondNick
@@ -176,10 +172,10 @@ onKarmaFile action = do
       res
 
 
-toString :: [(Text, Integer)] -> ByteString
-toString = BSC.intercalate ", " . map (\(nick, score) ->
-    encodeUtf8 nick <> ": " <> pack (show score))
+toString :: [(Text, Integer)] -> Text
+toString = T.intercalate ", " . map (\(nick, score) ->
+    nick <> ": " <> pack (show score))
 
 
-alarm :: [ByteString] -> EventEnv ()
-alarm = lift . broadcast "irc_alarm" . BSC.unwords
+alarm :: [Text] -> EventEnv ()
+alarm = lift . broadcast "irc_alarm" . T.unwords

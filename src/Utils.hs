@@ -16,6 +16,9 @@ import           Data.Maybe                 (fromMaybe)
 import           Data.Monoid                ((<>))
 import           Data.Char                  (toLower, isLetter)
 import           Data.ByteString            (ByteString)
+import           Data.Text                  (Text, dropAround)
+import qualified Data.Text                  as T
+import           Data.Text.Encoding         (encodeUtf8)
 import qualified Data.ByteString.Char8      as BS
 import qualified Data.ByteString.Lazy       as LBS
 import           Control.Concurrent.MVar
@@ -30,19 +33,17 @@ import           Data.Aeson                 (eitherDecode)
 import           Data.Aeson.Types           (parseEither, FromJSON, Parser)
 
 
-sanitize :: ByteString -> ByteString
-sanitize = BS.map toLower
-         . BS.dropWhile (not . isLetter)
-         . fst . BS.breakEnd isLetter
+sanitize :: Text -> Text
+sanitize = T.map toLower . dropAround (not . isLetter)
 
 
-broadcast :: ByteString -> ByteString -> IO ()
+broadcast :: Text -> Text -> IO ()
 broadcast name msg = void $ do
     let addr = SockAddrInet 5042 0xffffffff
     proto <- getProtocolNumber "udp"
     sock <- socket AF_INET Datagram proto
     setSocketOption sock Broadcast sOL_SOCKET
-    sendTo sock ("COMMON,0," <> BS.snoc name ',' <> msg) addr
+    sendTo sock ("COMMON,0," <> encodeUtf8 (T.snoc name ',') <> encodeUtf8 msg) addr
 
 
 getURL :: String -> IO (Either String LBS.ByteString)

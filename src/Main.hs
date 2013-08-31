@@ -3,9 +3,9 @@
 import           Control.Applicative
 import           Control.Monad
 import           Data.Foldable              (for_)
-import           Data.ByteString            (isPrefixOf)
-import qualified Data.ByteString            as BS
-import qualified Data.ByteString.Char8      as BSC
+import           Data.Text                  (isPrefixOf)
+import qualified Data.Text                  as T
+import           Data.Text.Encoding         (decodeUtf8)
 import qualified Data.Map                   as M
 import           System.Environment         (lookupEnv)
 import           Network.SimpleIRC
@@ -13,7 +13,6 @@ import           System.Posix.Daemonize
 
 import EventEnv
 import Commands
-import Utils
 import Config
 import Monitor
 
@@ -59,10 +58,10 @@ startBot cfg = do
 
 onMessage :: CommandMap -> Config -> EventFunc
 onMessage cmds (Config url file _ _ _ _) s message =
-    case BSC.words (mMsg message) of
-        (name:"+1":_) -> applyCmd addKarma $ sanitize name
+    case T.words $ decodeUtf8 $ mMsg message of
+        (name:"+1":_) -> applyCmd addKarma name
         (cmd:args)     | "!" `isPrefixOf` cmd
-                      -> for_ (M.lookup (BS.tail cmd) cmds) (`applyCmd` args)
+                      -> for_ (M.lookup (T.tail cmd) cmds) (`applyCmd` args)
         _             -> pure ()
   where
     applyCmd c args = runEnv (c args) url file s message

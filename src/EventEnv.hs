@@ -17,7 +17,8 @@ import           Control.Monad.Trans.Class  (lift)
 import           Control.Applicative
 import           Data.Maybe
 import           Data.Monoid
-import           Data.ByteString            (ByteString)
+import           Data.Text                  (Text)
+import           Data.Text.Encoding         (encodeUtf8, decodeUtf8)
 import           Network.SimpleIRC
 
 
@@ -36,18 +37,18 @@ runEnv :: EventEnv () -> String -> String -> EventFunc
 runEnv env url file s message = runReaderT env $ MsgEnv s message url file
 
 
-respond :: ByteString -> EventEnv ()
+respond :: Text -> EventEnv ()
 respond resp = do
     s <- asks server
     origin <- fromJust . mOrigin <$> asks msg
-    lift $ sendMsg s origin resp
+    lift $ sendMsg s origin $ encodeUtf8 resp
 
 
-respondNick :: ByteString -> EventEnv ()
+respondNick :: Text -> EventEnv ()
 respondNick resp = do
     m <- asks msg
     let nick   = fromJust $ mNick m
         origin = fromJust $ mOrigin m
     respond $ if nick == origin
                 then resp
-                else nick <> ": " <> resp
+                else decodeUtf8 nick <> ": " <> resp

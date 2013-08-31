@@ -9,8 +9,10 @@ import           Control.Exception          (catch, IOException)
 import           Data.Monoid                ((<>))
 import           Data.Foldable              (for_)
 import           Data.Char                  (isSpace)
-import           Data.ByteString.Char8      (ByteString, breakEnd, pack)
-import qualified Data.ByteString.Char8      as BS
+import           Data.ByteString.Char8      (breakEnd, pack)
+import           Data.Text                  (Text)
+import qualified Data.Text                  as T
+import           Data.Text.Encoding         (decodeUtf8, encodeUtf8)
 import           Network.SimpleIRC
 import           Data.Aeson                 ((.:))
 import qualified Data.Map                   as M
@@ -41,14 +43,14 @@ monitor cfg serv = forever $ do
 
 
 -- | Voice channel members who are currently present, devoice those who left.
-changeVoice :: Config -> MIrc -> [ByteString] -> IO ()
+changeVoice :: Config -> MIrc -> [Text] -> IO ()
 changeVoice cfg serv present = do
     nicks <- getNicks (channel cfg) serv
     let (there, notThere) = M.partitionWithKey (\n _ -> n `elem` present) nicks
         remove = M.filter ((== Voice) . fst) notThere
         give   = M.filter ((== None) . fst) there
         setMode mode toSet = for_ toSet $ \(_, nick) ->
-          sendCmd serv $ MMode (pack $ channel cfg) mode $ Just nick
+          sendCmd serv $ MMode (pack $ channel cfg) mode $ Just $ encodeUtf8 nick
     setMode "+v" give
     setMode "-v" remove
 
@@ -68,15 +70,16 @@ changeTopic cfg serv num = do
 
 -- | Get the members of the channel in a map from normalized nick to a pair
 -- of voice status and actual name
-getNicks :: String -> MIrc -> IO (M.Map ByteString (Mode,ByteString))
+getNicks :: String -> MIrc -> IO (M.Map Text (Mode,Text))
 getNicks chan serv =
-    M.fromList . map mkEntry . BS.words <$> getNumericResponse serv "353" cmd
+    M.fromList . map mkEntry . T.words . decodeUtf8 <$>
+      getNumericResponse serv "353" cmd
   where
     cmd = sendRaw serv $ "NAMES " <> pack chan
     mkEntry rawNick =
-        let mode = case BS.head rawNick of
+        let mode = case T.head rawNick of
                        '@' -> Op;
                        '+' -> Voice;
                         _  -> None;
-            nick = if mode /= None then BS.tail rawNick else rawNick
+            nick = if mode /= None then T.tail rawNick else rawNick
         in (sanitize rawNick, (mode, nick))
