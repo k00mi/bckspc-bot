@@ -72,7 +72,8 @@ changeTopic cfg serv num = do
 -- of voice status and actual name
 getNicks :: String -> MIrc -> IO [Nick]
 getNicks chan serv =
-    map mkNick . T.words . decodeUtf8 <$> getNumericResponse serv "353" cmd
+    map mkNick . T.words . T.tail . T.dropWhile (/= ':') . decodeUtf8 <$>
+      getNumericResponse serv "353" cmd
   where
     cmd = sendRaw serv $ "NAMES " <> pack chan
 
