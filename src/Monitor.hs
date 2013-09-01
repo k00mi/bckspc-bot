@@ -47,12 +47,14 @@ changeVoice :: Config -> MIrc -> [Text] -> IO ()
 changeVoice cfg serv present = do
     nicks <- getNicks (channel cfg) serv
     let (there, notThere) = M.partition (\(_, n) -> n `elem` present) nicks
-        remove = M.filter ((== Voice) . fst) notThere
-        give   = M.filter ((== None) . fst) there
-        setMode mode nicks = flip M.traverseWithKey nicks $ \nick _ ->
+        remove = M.keys $ M.filter ((== Voice) . fst) notThere
+        give   = M.keys $ M.filter ((== None) . fst) there
+        setMode mode nicks = for_ nicks $ \nick ->
           sendCmd serv $ MMode (pack $ channel cfg) mode $ Just $ encodeUtf8 nick
+    syslog Debug $ "Giving voice to: " ++ show give
     setMode "+v" give
-    setMode "-v" remove *> pure ()
+    syslog Debug $ "Taking voice from: " ++ show remove
+    setMode "-v" remove
 
 
 -- | Set a new topic if open/close status changed.
