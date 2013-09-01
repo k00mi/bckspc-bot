@@ -6,6 +6,7 @@ import           Control.Monad
 import           Control.Applicative
 import           Control.Concurrent         (threadDelay)
 import           Control.Exception          (catch, IOException)
+import           Data.List                  (partition)
 import           Data.Monoid                ((<>))
 import           Data.Foldable              (for_)
 import           Data.Char                  (isSpace)
@@ -13,16 +14,12 @@ import           Data.ByteString.Char8      (breakEnd, pack)
 import           Data.Text                  (Text)
 import qualified Data.Text                  as T
 import           Data.Text.Encoding         (decodeUtf8, encodeUtf8)
-import           Network.SimpleIRC
+import           Network.SimpleIRC          hiding (Nick)
 import           Data.Aeson                 ((.:))
-import qualified Data.Map                   as M
 import           System.Posix.Syslog
 
 import Config
 import Utils
-
-
-data Mode = None | Voice | Op deriving (Eq)
 
 
 -- | Check the status API every 5 minutes to see if members are present.
@@ -45,10 +42,11 @@ monitor cfg serv = forever $ do
 -- | Voice channel members who are currently present, devoice those who left.
 changeVoice :: Config -> MIrc -> [Text] -> IO ()
 changeVoice cfg serv present = do
+    let prsnt = map sanitize present
     nicks <- getNicks (channel cfg) serv
-    let (there, notThere) = M.partition (\(_, n) -> n `elem` present) nicks
-        remove = M.keys $ M.filter ((== Voice) . fst) notThere
-        give   = M.keys $ M.filter ((== None) . fst) there
+    let (there, notThere) = partition (flip elem prsnt . sanitize . name) nicks
+        remove = map name $ filter ((== Voice) . mode) notThere
+        give   = map name $ filter ((== None) . mode) there
         setMode mode nicks = for_ nicks $ \nick ->
           sendCmd serv $ MMode (pack $ channel cfg) mode $ Just $ encodeUtf8 nick
     syslog Debug $ "Giving voice to: " ++ show give
@@ -72,16 +70,23 @@ changeTopic cfg serv num = do
 
 -- | Get the members of the channel in a map from normalized nick to a pair
 -- of voice status and actual name
-getNicks :: String -> MIrc -> IO (M.Map Text (Mode,Text))
+getNicks :: String -> MIrc -> IO [Nick]
 getNicks chan serv =
-    M.fromList . map mkEntry . T.words . decodeUtf8 <$>
-      getNumericResponse serv "353" cmd
+    map mkNick . T.words . decodeUtf8 <$> getNumericResponse serv "353" cmd
   where
     cmd = sendRaw serv $ "NAMES " <> pack chan
-    mkEntry rawNick =
-        let mode = case T.head rawNick of
-                       '@' -> Op;
-                       '+' -> Voice;
-                        _  -> None;
-            nick = if mode /= None then T.tail rawNick else rawNick
-        in (nick, (mode, sanitize nick))
+
+data Nick = Nick
+    { name :: Text
+    , mode :: Mode
+    }
+
+data Mode = None | Voice | Op deriving (Eq)
+
+mkNick :: Text -> Nick
+mkNick rawNick = Nick (if mode /= None then T.tail rawNick else rawNick) mode
+  where
+    mode = case T.head rawNick of
+             '@' -> Op
+             '+' -> Voice
+             _   -> None
