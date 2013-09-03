@@ -14,23 +14,23 @@ bckspc-bot is a daemon and supports the usual start/stop/restart commands.
 
 <dl>
   <dt>!inspace</dt>
-  <dd>List the members currently present.</dd>
+  <dd>Shortcut: i. List the members currently present.</dd>
 
   <dt>!pizza NUM{s,m,h}</dt>
-  <dd>Alert you in NUM seconds/minutes/hours. Default is 15 minutes.</dd>
+  <dd>Shortcut: p. Alert you in NUM seconds/minutes/hours. Default is 15 minutes.</dd>
 
   <dt>NICK +1</dt>
   <dd>Give NICK one karma point.</dd>
 
   <dt>!karma [NICKS]</dt>
-  <dd>List each NICK's karma score.
+  <dd>Shortcut: k. List each NICK's karma score.
       If no NICK is supplied, list the issuer's score.</dd>
 
   <dt>!karmatop NUM</dt>
   <dd>List the top NUM karma scorers. Default is 3.</dd>
 
   <dt>!alarm MSG</dt>
-  <dd>Broadcasts MSG in the local network.
+  <dd>Shortcut: a. Broadcasts MSG in the local network.
       Other services may display MSG on the LED-board or similar.<\dd>
 
   <dt>!echo [ARGS]</dt>

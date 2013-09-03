@@ -43,6 +43,10 @@ commands = M.fromList [ ("echo", echo)
                       , ("karma", karma)
                       , ("karmatop", karmatop)
                       , ("alarm", alarm)
+                      , ("i", inspace)
+                      , ("p", pizza)
+                      , ("a", alarm)
+                      , ("k", karma)
                       ]
 
 
