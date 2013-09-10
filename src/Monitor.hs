@@ -49,9 +49,7 @@ changeVoice cfg serv present = do
         give   = map name $ filter ((== None) . mode) there
         setMode mode nicks = for_ nicks $ \nick ->
           sendCmd serv $ MMode (pack $ channel cfg) mode $ Just $ encodeUtf8 nick
-    syslog Debug $ "Giving voice to: " ++ show give
     setMode "+v" give
-    syslog Debug $ "Taking voice from: " ++ show remove
     setMode "-v" remove
 
 
