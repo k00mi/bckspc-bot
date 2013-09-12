@@ -145,14 +145,17 @@ karma nicks = onKarmaFile $ \obj -> do
 
 
 karmatop :: [Text] -> EventEnv ()
-karmatop nums = onKarmaFile $
-      (pure Nothing <*)
-      . respondNick
-      . toString
-      . take n
-      . sortBy (comparing $ Down . snd)
-      . map (\(name, Number (I x)) -> (name, x))
-      . HM.toList
+karmatop nums =
+    if n > 5
+      then respondNick "At most 5 nicks will be shown"
+      else onKarmaFile $
+          (pure Nothing <*)
+          . respondNick
+          . toString
+          . take n
+          . sortBy (comparing $ Down . snd)
+          . map (\(name, Number (I x)) -> (name, x))
+          . HM.toList
   where
     n = fromMaybe 3 $ readMaybe . unpack =<< listToMaybe nums
 

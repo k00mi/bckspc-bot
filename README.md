@@ -27,7 +27,7 @@ bckspc-bot is a daemon and supports the usual start/stop/restart commands.
       If no NICK is supplied, list the issuer's score.</dd>
 
   <dt>!karmatop NUM</dt>
-  <dd>List the top NUM karma scorers. Default is 3.</dd>
+  <dd>List the top NUM karma scorers. Default is 3, maximum is 5.</dd>
 
   <dt>!alarm MSG</dt>
   <dd>Shortcut: a. Broadcasts MSG in the local network.
