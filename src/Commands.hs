@@ -38,6 +38,7 @@ type CommandMap = M.Map Text ([Text] -> EventEnv ())
 
 commands :: CommandMap
 commands = M.fromList [ ("echo", echo)
+                      , ("help", help)
                       , ("inspace", inspace)
                       , ("pizza", pizza)
                       , ("karma", karma)
@@ -53,6 +54,9 @@ commands = M.fromList [ ("echo", echo)
 echo :: [Text] -> EventEnv ()
 echo = respond . T.unwords
 
+
+help :: [Text] -> EventEnv ()
+help _ = respondNick "see https://github.com/k00mi/bckspc-bot"
 
 inspace :: [Text] -> EventEnv ()
 inspace _ = do
