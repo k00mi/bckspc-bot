@@ -13,6 +13,8 @@ data Config = Config
             , karmaFile :: FilePath
             , channel   :: String
             , pidDir    :: Maybe FilePath
+            , serv      :: String
+            , port      :: Int
             , nick      :: String
             , password  :: Maybe String
             }
@@ -23,7 +25,9 @@ instance FromJSON Config where
                            <*> v .:  "karmaFile"
                            <*> v .:  "channel"
                            <*> v .:? "pidDir"
-                           <*> v .:? "nick" .!= "bckspc-bot"
+                           <*> v .:? "server" .!= "chat.freenode.net"
+                           <*> v .:? "port" .!= 6667
+                           <*> v .:? "nick" .!= "b4ckspace"
                            <*> v .:? "password"
     parseJSON _          = empty
 

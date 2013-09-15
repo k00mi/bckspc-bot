@@ -11,7 +11,7 @@ import           System.Environment         (lookupEnv)
 import           Network.SimpleIRC
 import           System.Posix.Daemonize
 
-import EventEnv
+import EventEnv (runEnv)
 import Commands
 import Config
 import Monitor
@@ -39,10 +39,11 @@ bot cfg = simpleDaemon
 
 startBot :: Config -> IO ()
 startBot cfg = do
-    let ircCfg = (mkDefaultConfig "chat.freenode.net" $ nick cfg)
+    let ircCfg = (mkDefaultConfig (serv cfg) $ nick cfg)
                    { cChannels = [channel cfg]
+                   , cPort     = port cfg
                    , cEvents   = [Privmsg $ onMessage commands cfg]
-                   , cUsername = "bckspc"
+                   , cUsername = nick cfg
                    , cRealname = "bckspc"
                    , cPass     = password cfg
                    }
@@ -57,7 +58,7 @@ startBot cfg = do
 
 
 onMessage :: CommandMap -> Config -> EventFunc
-onMessage cmds (Config url file _ _ _ _) s message =
+onMessage cmds (Config{statusUrl = url, karmaFile = file}) s message =
     case T.words $ decodeUtf8 $ mMsg message of
         (name:"+1":_) -> applyCmd addKarma name
         (cmd:args)     | "!" `isPrefixOf` cmd
