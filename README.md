@@ -70,6 +70,12 @@ The following fields are accepted:
 
   <dt>password</dt>
   <dd>Optional. The password to register with.</dt>
+
+  <dt>server</dt>
+  <dd>The IRC server to connect to.</dd>
+
+  <dt>port</dt>
+  <dd>The port on which to connect to the server.</dd>
 </dl>
 
 See [the provided example file](cfg.json).
