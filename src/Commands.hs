@@ -72,7 +72,8 @@ inspace _ = do
                 | num == (0 :: Int) -> pure $ "Backspace is empty"
                 | otherwise         -> pure $ pack (show num)
                                             <> " members present: "
-                                            <> T.intercalate ", " nicks
+                                            <> T.intercalate ", "
+                                                (map avoidHighlighting nicks)
     respondNick response
 
 
@@ -186,7 +187,7 @@ onKarmaFile action = do
 
 toString :: [(Text, Integer)] -> Text
 toString = T.intercalate ", " . map (\(nick, score) ->
-    nick <> ": " <> pack (show score))
+    avoidHighlighting nick <> ": " <> pack (show score))
 
 
 alarm :: [Text] -> EventEnv ()

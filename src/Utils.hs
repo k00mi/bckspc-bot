@@ -2,6 +2,7 @@
 
 module Utils
   ( sanitize
+  , avoidHighlighting
   , broadcast
   , getJSON
   , getURL
@@ -34,6 +35,12 @@ import           Data.Aeson.Types           (parseEither, FromJSON, Parser)
 
 sanitize :: Text -> Text
 sanitize = T.map toLower . dropAround (not . isLetter)
+
+
+avoidHighlighting :: Text -> Text
+avoidHighlighting nick = maybe nick insertUnicode $ T.uncons nick
+  where
+    insertUnicode (c,cs) = c `T.cons` '\8288' `T.cons` cs
 
 
 broadcast :: Text -> Text -> IO ()
