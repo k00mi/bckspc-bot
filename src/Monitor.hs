@@ -5,7 +5,7 @@ module Monitor (monitor) where
 import           Control.Monad
 import           Control.Applicative
 import           Control.Concurrent         (threadDelay)
-import           Control.Exception          (catch, IOException)
+import           Control.Exception          (catch, IOException, SomeException)
 import           Data.List                  (partition)
 import           Data.Monoid                ((<>))
 import           Data.Foldable              (for_)
@@ -37,6 +37,8 @@ monitor cfg serv = forever $ do
             changeVoice cfg serv present
           `catch`
             \e -> syslog Warning $ "monitor: " ++ show (e :: IOException)
+  `catch`
+    \e -> syslog Error $ "monitor: Uncaught exception: " ++ show (e :: SomeException)
 
 
 -- | Voice channel members who are currently present, devoice those who left.
