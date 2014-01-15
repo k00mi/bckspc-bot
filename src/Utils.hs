@@ -13,6 +13,7 @@ module Utils
 
 import           Control.Monad
 import           Control.Applicative
+import           Control.Exception          (catch, SomeException(..))
 import           Data.Maybe                 (fromMaybe)
 import           Data.Monoid                ((<>))
 import           Data.Char                  (toLower, isLetter)
@@ -58,6 +59,8 @@ getURL url =
       (return . Left $ "Invalid URI: " ++ url)
       (fmap (leftMap show . fmap rspBody) . simpleHTTP . mkRequest GET)
       (parseURI url)
+  `catch`
+    \(SomeException e) -> return (Left (show e))
 
 
 getJSON :: FromJSON a => String -> (a -> Parser b) -> IO (Either String b)
