@@ -191,4 +191,6 @@ toString = T.intercalate ", " . map (\(nick, score) ->
 
 
 alarm :: [Text] -> EventEnv ()
-alarm = lift . broadcast "irc_alarm" . T.unwords
+alarm args = do
+    lift . broadcast "irc_alarm" $ T.unwords args
+    respond "ALAAAARM"
