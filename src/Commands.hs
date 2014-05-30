@@ -91,6 +91,7 @@ pizza args =
         lift . forkIO $ do
             threadDelay t
             runEnv (respondNick "Time is up!") url file s m
+            broadcast "pizza_timer" "1"
         respondNick "I won't forget it!"
 
     parseErr = respondNick "Could not parse duration"
