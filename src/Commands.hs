@@ -23,10 +23,10 @@ import qualified Data.Map                   as M
 import qualified Data.HashMap.Strict        as HM
 import           Control.Concurrent         (forkIO, threadDelay)
 import           System.IO.Error            (tryIOError)
-import           System.IO
+import           System.Directory           (renameFile)
 import           Network.SimpleIRC
-import           Data.Aeson
-import           Data.Aeson.Types
+import           Data.Aeson                 hiding (Error)
+import           Data.Aeson.Types           hiding (Error)
 import           Data.Attoparsec.Number     (Number(..))
 import           System.Posix.Syslog
 
@@ -168,22 +168,24 @@ karmatop nums =
 -- be called but an error message will be sent to IRC and Syslog.
 onKarmaFile :: (Object -> EventEnv (Maybe Object)) -> EventEnv ()
 onKarmaFile action = do
-    file   <- asks karmaFile
-    msgenv <- ask
-    res <- lift . tryIOError . withFile file ReadWriteMode $ \h -> do
-        size    <- hFileSize h
-        content <- BL.hGet h (fromInteger size)
-        res     <- maybe
-                    (fail "Failed reading karma file")
-                    (\obj -> runReaderT (action obj) msgenv)
-                    (decode content)
-        for_ res $ (hSeek h AbsoluteSeek 0 >>) . BL.hPut h . encode
-    either
-      (\err -> do
-        lift . syslog Warning $ "onKarmaFile: " ++ show err
-        respond "Could not read karma file.")
-      pure
-      res
+    file <- asks karmaFile
+    eitherContent <- safeIO $ BL.readFile file
+    case leftMap show eitherContent >>= eitherDecode of
+      Left err -> do
+        lift . syslog Error $ "onKarmaFile: " ++ err
+        respond $ "Could not read karma file: " <> T.pack err
+      Right obj -> do
+        maybeObj' <- action obj
+        for_ maybeObj' $ \obj' -> do
+          writeResult <- safeIO $ do
+            let newFile = file ++ ".new"
+            BL.writeFile newFile (encode obj')
+            renameFile newFile file
+          case writeResult of
+            Left err -> do
+              lift . syslog Error $ "onKarmaFile: " ++ show err
+              respond $ "Could not write karma file: " <> T.pack (show err)
+            Right _ -> pure ()
 
 
 toString :: [(Text, Integer)] -> Text
@@ -195,3 +197,6 @@ alarm :: [Text] -> EventEnv ()
 alarm args = do
     lift . broadcast "irc_alarm" $ T.unwords args
     respond "ALAAAARM"
+
+safeIO :: IO a -> EventEnv (Either IOError a)
+safeIO = lift . tryIOError
