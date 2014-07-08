@@ -61,9 +61,7 @@ help _ = respondNick "see https://github.com/k00mi/bckspc-bot"
 inspace :: [Text] -> EventEnv ()
 inspace _ = do
     url <- asks statusUrl
-    res <- lift . getJSON url $ \obj ->
-             (,) <$>  obj .: "members"
-                 <*> (obj .: "members_present" >>= mapM (.: "nickname"))
+    res <- lift $ getMembersPresent url
     response <- case res of
             Left err -> do
               lift . syslog Warning $ "inspace: Error fetching JSON: " ++ err

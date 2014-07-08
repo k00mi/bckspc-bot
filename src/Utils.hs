@@ -5,6 +5,7 @@ module Utils
   , avoidHighlighting
   , broadcast
   , getJSON
+  , getMembersPresent
   , getURL
   , leftMap
   , getNumericResponse
@@ -30,7 +31,7 @@ import           Network.BSD                (getProtocolNumber)
 import           Network.HTTP               (simpleHTTP, rspBody)
 import           Network.HTTP.Base          (mkRequest, RequestMethod(GET))
 import           Network.URI                (parseURI)
-import           Data.Aeson                 (eitherDecode)
+import           Data.Aeson                 (eitherDecode, (.:))
 import           Data.Aeson.Types           (parseEither, FromJSON, Parser)
 
 
@@ -69,6 +70,16 @@ getJSON url parser =
     <$> getURL url
 
 
+getMembersPresent :: String -> IO (Either String (Int, [Text]))
+getMembersPresent url = getJSON url $ \obj -> do
+    rooms <- obj .: "sensors" >>= (.: "people_now_present")
+    let f (num, names) o = do
+          numLocal <- o .: "value"
+          namesLocal <- o .: "names"
+          return (num + numLocal, namesLocal ++ names)
+    foldM f (0, []) rooms
+
+
 leftMap :: (a -> b) -> Either a c -> Either b c
 leftMap f (Left x)  = Left $ f x
 leftMap _ (Right x) = Right x
@@ -87,4 +98,3 @@ isPM :: IrcMessage -> Bool
 isPM msg = fromMaybe False $ do
     nick   <- mNick msg
     (nick ==) <$> mOrigin msg
-

@@ -27,9 +27,7 @@ import Utils
 monitor :: Config -> MIrc -> IO ()
 monitor cfg serv = forever $ do
     threadDelay $ 10^6 * 60 * 5 -- 5 minutes
-    resp <- getJSON (statusUrl cfg) $ \obj ->
-              (,) <$>  obj .: "members"
-                  <*> (obj .: "members_present" >>= mapM (.: "nickname"))
+    resp <- getMembersPresent (statusUrl cfg)
     case resp of
       Left err -> syslog Warning $ "Error retrieving JSON: " ++ err
       Right (numMems, present) -> do

@@ -24,7 +24,7 @@ executable bckspc-bot
                  simpleirc >=0.3,
                  containers >=0.5,
                  HTTP >=4000.2,
-                 aeson ==0.6.*,
+                 aeson >=0.6,
                  transformers >= 0.3,
                  network,
                  hdaemonize >= 0.4.4,
