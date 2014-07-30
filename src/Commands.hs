@@ -103,6 +103,7 @@ pizza args =
           ""  -> Right $ mins num
           _   -> Left "invalid suffix"
 
+    secs :: Int -> Int
     secs  x = x * 10^6
     mins  x = x * secs 60
     hours x = x * mins 60
@@ -154,7 +155,7 @@ karmatop nums =
           . toString
           . take n
           . sortBy (comparing $ Down . snd)
-          . map (\(name, Number (I x)) -> (name, x))
+          . map (\(name, Number x) -> (name, truncate x))
           . HM.toList
   where
     n = fromMaybe 3 $ readMaybe . unpack =<< listToMaybe nums

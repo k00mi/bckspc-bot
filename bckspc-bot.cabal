@@ -20,11 +20,11 @@ executable bckspc-bot
   main-is: Main.hs
   other-modules: Commands, Utils, EventEnv, Config, Monitor
   build-depends: base >=4.6,
-                 bytestring >=0.10,
+                 bytestring >=0.10.4.0,
                  simpleirc >=0.3,
                  containers >=0.5,
                  HTTP >=4000.2,
-                 aeson >=0.6,
+                 aeson >=0.7,
                  transformers >= 0.3,
                  network,
                  hdaemonize >= 0.4.4,
