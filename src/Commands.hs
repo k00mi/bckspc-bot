@@ -21,13 +21,13 @@ import           Data.Text.Encoding         (decodeUtf8)
 import           Data.Text.Read             (decimal)
 import qualified Data.Map                   as M
 import qualified Data.HashMap.Strict        as HM
+import           Data.HashMap.Strict        ((!))
 import           Control.Concurrent         (forkIO, threadDelay)
 import           System.IO.Error            (tryIOError)
 import           System.Directory           (renameFile)
 import           Network.SimpleIRC
 import           Data.Aeson                 hiding (Error)
 import           Data.Aeson.Types           hiding (Error)
-import           Data.Attoparsec.Number     (Number(..))
 import           System.Posix.Syslog
 
 import EventEnv
@@ -116,8 +116,12 @@ addKarma nick = do
         nick'  = sanitize nick
     if | isPM message -> respondNick "You can only give karma in the channel"
        | nick' == sender -> respondNick "You can't give yourself karma"
-       | otherwise -> onKarmaFile $
-            pure . Just . HM.insertWith add nick' (Number 1)
+       | otherwise -> onKarmaFile $ \o ->
+            let o' = HM.insertWith add nick' (Number 1) o
+                Number n = o' ! nick'
+                now = pack (show $ truncate n)
+            in Just o' <$
+                 respond (nick <> " now has " <> now <> " karma!")
   where
     add (Number x) (Number y) = Number $ x + y
     add _ _ = error "add: Adding non-Numbers"
