@@ -14,7 +14,7 @@ module Utils
 
 import           Control.Monad
 import           Control.Applicative
-import           Control.Exception          (catch, SomeException(..))
+import           Control.Exception          (catch)
 import           Data.Maybe                 (fromMaybe)
 import           Data.Monoid                ((<>))
 import           Data.Char                  (toLower, isLetter)
@@ -28,9 +28,9 @@ import           Network.SimpleIRC
 import           Network.Socket             hiding (sendTo)
 import           Network.Socket.ByteString  (sendTo)
 import           Network.BSD                (getProtocolNumber)
-import           Network.HTTP               (simpleHTTP, rspBody)
-import           Network.HTTP.Base          (mkRequest, RequestMethod(GET))
-import           Network.URI                (parseURI)
+import           Network.HTTP.Client        (parseUrl, newManager, httpLbs,
+                                            HttpException, responseBody)
+import           Network.HTTP.Client.TLS    (tlsManagerSettings)
 import           Data.Aeson                 (eitherDecode, (.:))
 import           Data.Aeson.Types           (parseEither, FromJSON, Parser)
 
@@ -54,20 +54,18 @@ broadcast name msg = void $ do
     sendTo sock ("COMMON,0," <> encodeUtf8 (T.snoc name ',') <> encodeUtf8 msg) addr
 
 
-getURL :: String -> IO (Either String LBS.ByteString)
-getURL url =
-    maybe
-      (return . Left $ "Invalid URI: " ++ url)
-      (fmap (leftMap show . fmap rspBody) . simpleHTTP . mkRequest GET)
-      (parseURI url)
-  `catch`
-    \(SomeException e) -> return (Left (show e))
+getURL :: String -> IO LBS.ByteString
+getURL url = do
+    req <- parseUrl url
+    man <- newManager tlsManagerSettings
+    responseBody <$> httpLbs req man
 
 
 getJSON :: FromJSON a => String -> (a -> Parser b) -> IO (Either String b)
 getJSON url parser =
-    leftMap ("getJSON: " ++) . ((parseEither parser <=< eitherDecode) =<<)
-    <$> getURL url
+    fmap (parseEither parser <=< eitherDecode) (getURL url)
+  `catch`
+    \e -> return $ Left $ show (e :: HttpException)
 
 
 getMembersPresent :: String -> IO (Either String (Int, [Text]))
