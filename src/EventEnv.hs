@@ -16,7 +16,7 @@ module EventEnv
 import           Control.Monad.Trans.Reader
 import           Control.Monad.Trans.Class  (lift)
 import           Control.Applicative
-import           Control.Concurrent         (MVar, withMVar)
+import           Control.Concurrent         (MVar)
 import           Data.Maybe
 import           Data.Monoid
 import           Data.Text                  (Text)
