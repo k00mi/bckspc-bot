@@ -1,23 +1,39 @@
 module Config
   ( Config(..)
+  , Redmine(..)
   , readConfigFile
   ) where
 
 import           Data.Aeson
+import           Data.Traversable           (traverse)
 import           Control.Applicative
 import qualified Data.ByteString.Lazy       as BS
 
 
 data Config = Config
-            { statusUrl :: String
-            , karmaFile :: FilePath
-            , channel   :: String
-            , pidDir    :: Maybe FilePath
-            , serv      :: String
-            , port      :: Int
-            , nick      :: String
-            , password  :: Maybe String
+            { statusUrl   :: String
+            , karmaFile   :: FilePath
+            , channel     :: String
+            , pidDir      :: Maybe FilePath
+            , serv        :: String
+            , port        :: Int
+            , nick        :: String
+            , password    :: Maybe String
+            , redmine     :: Maybe Redmine
             }
+
+data Redmine = Redmine
+             { rmURL      :: String
+             , rmUser     :: Maybe String
+             , rmPassword :: Maybe String
+             }
+
+instance FromJSON Redmine where
+    parseJSON (Object v) = Redmine
+                           <$> v .:  "url"
+                           <*> v .:? "user"
+                           <*> v .:? "password"
+    parseJSON _          = empty
 
 instance FromJSON Config where
     parseJSON (Object v) = Config
@@ -29,6 +45,7 @@ instance FromJSON Config where
                            <*> v .:? "port" .!= 6667
                            <*> v .:? "nick" .!= "b4ckspace"
                            <*> v .:? "password"
+                           <*> (v .:? "redmine" >>= traverse parseJSON)
     parseJSON _          = empty
 
 readConfigFile :: FilePath -> IO (Either String Config)
