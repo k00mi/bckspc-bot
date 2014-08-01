@@ -1,6 +1,7 @@
 {-# LANGUAGE OverloadedStrings, TupleSections #-}
 
 import           Control.Applicative
+import           Control.Concurrent         (MVar, newMVar)
 import           Control.Monad
 import           Data.Foldable              (for_)
 import           Data.Text                  (isPrefixOf)
@@ -39,10 +40,12 @@ bot cfg = simpleDaemon
 
 startBot :: Config -> IO ()
 startBot cfg = do
+    fileVar <- newMVar (karmaFile cfg)
     let ircCfg = (mkDefaultConfig (serv cfg) $ nick cfg)
                    { cChannels = [channel cfg]
                    , cPort     = port cfg
-                   , cEvents   = [Privmsg $ onMessage commands cfg]
+                   , cEvents   = [Privmsg $
+                                    onMessage commands (statusUrl cfg) fileVar]
                    , cUsername = nick cfg
                    , cRealname = "bckspc"
                    , cPass     = password cfg
@@ -57,12 +60,12 @@ startBot cfg = do
       res
 
 
-onMessage :: CommandMap -> Config -> EventFunc
-onMessage cmds (Config{statusUrl = url, karmaFile = file}) s message =
+onMessage :: CommandMap -> String -> MVar String -> EventFunc
+onMessage cmds url fileVar s message =
     case T.words $ decodeUtf8 $ mMsg message of
         (name:"+1":_) -> applyCmd addKarma name
         (cmd:args)     | "!" `isPrefixOf` cmd
                       -> for_ (M.lookup (T.tail cmd) cmds) (`applyCmd` args)
         _             -> pure ()
   where
-    applyCmd c args = runEnv (c args) url file s message
+    applyCmd c args = runEnv (c args) url fileVar s message

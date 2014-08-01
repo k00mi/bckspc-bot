@@ -16,6 +16,7 @@ module EventEnv
 import           Control.Monad.Trans.Reader
 import           Control.Monad.Trans.Class  (lift)
 import           Control.Applicative
+import           Control.Concurrent         (MVar, withMVar)
 import           Data.Maybe
 import           Data.Monoid
 import           Data.Text                  (Text)
@@ -27,14 +28,14 @@ data MsgEnv = MsgEnv
             { server    :: MIrc
             , msg       :: IrcMessage
             , statusUrl :: String
-            , karmaFile :: String
+            , karmaFile :: MVar String
             }
 
 
 type EventEnv a = ReaderT MsgEnv IO a
 
 
-runEnv :: EventEnv a -> String -> String -> MIrc -> IrcMessage -> IO a
+runEnv :: EventEnv a -> String -> MVar String -> MIrc -> IrcMessage -> IO a
 runEnv env url file s message = runReaderT env $ MsgEnv s message url file
 
 

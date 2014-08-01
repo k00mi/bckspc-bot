@@ -8,6 +8,7 @@ module Commands
 
 import           Control.Monad
 import           Control.Applicative
+import           Control.Concurrent         (withMVar, readMVar)
 import           Data.Monoid                ((<>))
 import           Data.Maybe
 import           Data.Foldable              (for_)
@@ -168,24 +169,27 @@ karmatop nums =
 -- be called but an error message will be sent to IRC and Syslog.
 onKarmaFile :: (Object -> EventEnv (Maybe Object)) -> EventEnv ()
 onKarmaFile action = do
-    file <- asks karmaFile
-    eitherContent <- safeIO $ BL.readFile file
-    case leftMap show eitherContent >>= eitherDecode of
-      Left err -> do
-        lift . syslog Error $ "onKarmaFile: " ++ err
-        respond $ "Could not read karma file: " <> T.pack err
-      Right obj -> do
-        maybeObj' <- action obj
-        for_ maybeObj' $ \obj' -> do
-          writeResult <- safeIO $ do
-            let newFile = file ++ ".new"
-            BL.writeFile newFile (encode obj')
-            renameFile newFile file
-          case writeResult of
-            Left err -> do
-              lift . syslog Error $ "onKarmaFile: " ++ show err
-              respond $ "Could not write karma file: " <> T.pack (show err)
-            Right _ -> pure ()
+    fileVar <- asks karmaFile
+    file <- lift $ readMVar fileVar
+    processFile <- asIO $ do
+      eitherContent <- safeIO $ BL.readFile file
+      case leftMap show eitherContent >>= eitherDecode of
+        Left err -> do
+          lift . syslog Error $ "onKarmaFile: " ++ err
+          respond $ "Could not read karma file: " <> T.pack err
+        Right obj -> do
+          maybeObj' <- action obj
+          for_ maybeObj' $ \obj' -> do
+            writeResult <- safeIO $ do
+              let newFile = file ++ ".new"
+              BL.writeFile newFile (encode obj')
+              renameFile newFile file
+            case writeResult of
+              Left err -> do
+                lift . syslog Error $ "onKarmaFile: " ++ show err
+                respond $ "Could not write karma file: " <> T.pack (show err)
+              Right _ -> pure ()
+    lift $ withMVar fileVar $ \_ -> processFile
 
 
 toString :: [(Text, Integer)] -> Text
