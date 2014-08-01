@@ -82,13 +82,10 @@ pizza args =
       arg:_ -> either (const parseErr) notifyIn $ getTime arg
   where
     notifyIn t = do
-        s <- asks server
-        m <- asks msg
-        url <- asks statusUrl
-        file <- asks karmaFile
+        sendTimeUp <- asIO $ respondNick "Time is up!"
         lift . forkIO $ do
             threadDelay t
-            runEnv (respondNick "Time is up!") url file s m
+            sendTimeUp
             broadcast "pizza_timer" "1"
         respondNick "I won't forget it!"
 

@@ -5,6 +5,7 @@ module EventEnv
   , EventEnv
   , runEnv
   , lift
+  , asIO
   , respond
   , respondNick
   , ask
@@ -33,8 +34,17 @@ data MsgEnv = MsgEnv
 type EventEnv a = ReaderT MsgEnv IO a
 
 
-runEnv :: EventEnv () -> String -> String -> EventFunc
+runEnv :: EventEnv a -> String -> String -> MIrc -> IrcMessage -> IO a
 runEnv env url file s message = runReaderT env $ MsgEnv s message url file
+
+
+asIO :: EventEnv a -> EventEnv (IO a)
+asIO env = do
+    s <- asks server
+    m <- asks msg
+    url <- asks statusUrl
+    file <- asks karmaFile
+    return $ runEnv env url file s m
 
 
 respond :: Text -> EventEnv ()
