@@ -3,6 +3,7 @@
 module Utils
   ( sanitize
   , avoidHighlighting
+  , increment
   , broadcast
   , getJSONWith
   , getJSON
@@ -34,8 +35,10 @@ import           Network.HTTP.Client        (parseUrl, newManager, httpLbs,
                                             HttpException, responseBody,
                                             Request)
 import           Network.HTTP.Client.TLS    (tlsManagerSettings)
-import           Data.Aeson                 (eitherDecode, (.:))
+import           Data.Aeson                 (eitherDecode, (.:), Value(..),
+                                            Object)
 import           Data.Aeson.Types           (parseEither, FromJSON, Parser)
+import           Data.HashMap.Strict        (insertWith, (!))
 
 
 sanitize :: Text -> Text
@@ -46,6 +49,16 @@ avoidHighlighting :: Text -> Text
 avoidHighlighting nick = maybe nick insertUnicode $ T.uncons nick
   where
     insertUnicode (c,cs) = c `T.cons` '\8288' `T.cons` cs
+
+
+increment :: Text -> Object -> (Int, Object)
+increment nick o = (truncate new, o')
+  where
+    o' = insertWith add nick (Number 1) o
+    Number new = o' ! nick
+
+    add (Number x) (Number y) = Number $ x + y
+    add _ _ = error "add: Object contains non-Numbers."
 
 
 broadcast :: Text -> Text -> IO ()

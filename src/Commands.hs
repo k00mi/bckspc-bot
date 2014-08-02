@@ -115,14 +115,9 @@ addKarma nick = do
     if | isPM message -> respondNick "You can only give karma in the channel"
        | nick' == sender -> respondNick "You can't give yourself karma"
        | otherwise -> onKarmaFile $ \o ->
-            let o' = HM.insertWith add nick' (Number 1) o
-                Number n = o' ! nick'
-                now = pack (show $ truncate n)
-            in Just o' <$
-                 respond (nick <> " now has " <> now <> " karma!")
-  where
-    add (Number x) (Number y) = Number $ x + y
-    add _ _ = error "add: Adding non-Numbers"
+          let (n, o') = increment nick' o
+              now = pack (show n)
+          in Just o' <$ respond (nick <> " now has " <> now <> " karma!")
 
 
 karma :: [Text] -> EventEnv ()
