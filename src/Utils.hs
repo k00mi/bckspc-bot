@@ -4,8 +4,10 @@ module Utils
   ( sanitize
   , avoidHighlighting
   , broadcast
+  , getJSONWith
   , getJSON
   , getMembersPresent
+  , getURLTransformRQ
   , getURL
   , leftMap
   , getNumericResponse
@@ -29,7 +31,8 @@ import           Network.Socket             hiding (sendTo)
 import           Network.Socket.ByteString  (sendTo)
 import           Network.BSD                (getProtocolNumber)
 import           Network.HTTP.Client        (parseUrl, newManager, httpLbs,
-                                            HttpException, responseBody)
+                                            HttpException, responseBody,
+                                            Request)
 import           Network.HTTP.Client.TLS    (tlsManagerSettings)
 import           Data.Aeson                 (eitherDecode, (.:))
 import           Data.Aeson.Types           (parseEither, FromJSON, Parser)
@@ -54,18 +57,26 @@ broadcast name msg = void $ do
     sendTo sock ("COMMON,0," <> encodeUtf8 (T.snoc name ',') <> encodeUtf8 msg) addr
 
 
-getURL :: String -> IO LBS.ByteString
-getURL url = do
-    req <- parseUrl url
+getURLTransformRQ :: (Request -> Request) -> String -> IO LBS.ByteString
+getURLTransformRQ f url = do
+    req <- f <$> parseUrl url
     man <- newManager tlsManagerSettings
     responseBody <$> httpLbs req man
 
 
-getJSON :: FromJSON a => String -> (a -> Parser b) -> IO (Either String b)
-getJSON url parser =
-    fmap (parseEither parser <=< eitherDecode) (getURL url)
+getURL :: String -> IO LBS.ByteString
+getURL = getURLTransformRQ id
+
+
+getJSONWith :: FromJSON a
+            => IO LBS.ByteString -> (a -> Parser b) -> IO (Either String b)
+getJSONWith get parser =
+    fmap (parseEither parser <=< eitherDecode) get
   `catch`
     \e -> return $ Left $ show (e :: HttpException)
+
+getJSON :: FromJSON a => String -> (a -> Parser b) -> IO (Either String b)
+getJSON = getJSONWith . getURL
 
 
 getMembersPresent :: String -> IO (Either String (Int, [Text]))
