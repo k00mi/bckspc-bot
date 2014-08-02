@@ -16,6 +16,7 @@ import EventEnv (runEnv)
 import Commands
 import Config
 import Monitor
+import Redmine
 
 
 main :: IO ()
@@ -56,7 +57,9 @@ startBot cfg = do
             False
     either
       ioError
-      (void . monitor cfg)
+      (\s -> do
+        initRedmine cfg s fileVar
+        monitor cfg s)
       res
 
 

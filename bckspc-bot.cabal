@@ -18,7 +18,7 @@ cabal-version:       >=1.8
 executable bckspc-bot
   hs-source-dirs: src
   main-is: Main.hs
-  other-modules: Commands, Utils, EventEnv, Config, Monitor
+  other-modules: Commands, Utils, EventEnv, Config, Monitor, Redmine
   build-depends: base >=4.6,
                  bytestring >=0.10.4.0,
                  simpleirc >=0.3,
@@ -32,6 +32,7 @@ executable bckspc-bot
                  unordered-containers,
                  text,
                  attoparsec,
+                 vector,
                  hsyslog,
                  directory
   extensions: TemplateHaskell,
