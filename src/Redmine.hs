@@ -3,6 +3,7 @@ module Redmine (initRedmine) where
 import           Control.Applicative
 import           Control.Concurrent         (withMVar, MVar, forkIO,
                                             threadDelay)
+import           Control.Exception          (handle, IOException)
 import           Data.Aeson                 (eitherDecode, (.:), (.:?),
                                             Value(..), Object, encode)
 import           Data.Aeson.Types           (parseEither, FromJSON, Parser)
@@ -84,24 +85,34 @@ initRedmine cfg serv karmaVar = for_ (redmine cfg) $ \rm -> forkIO $ do
       Right date -> redmineLoop rm date
   where
     redmineLoop rm date = do
-      threadDelay $ 10^6 * 60 * 1 -- 1 hour
+      threadDelay $ 10^6 * 60 * 60 -- 1 hour
       eitherNew <- getClosedByAfter rm date
-      case eitherNew of
-        Left err -> syslog Warning $ "[redmineLoop] getClosedByAfter: " ++ err
+      newDate <- case eitherNew of
+        Left err -> do
+          syslog Warning $ "[redmineLoop] getClosedByAfter: " ++ err
+          return date
         Right (closedTasks, newDate) -> withMVar karmaVar $ \karmaFile -> do
-          json <- LBS.readFile karmaFile
-          case eitherDecode json of
-            Left err -> syslog Error $ "[redmineLoop] eitherDecode: " ++ err
-            Right obj -> do
-              let obj' = V.foldl' maybeInc obj closedTasks
-                  maybeInc o (_, Just nick) = snd $ increment (sanitize nick) o
-                  maybeInc o _              = o
-              let newFile = karmaFile ++ ".new"
-              LBS.writeFile newFile (encode obj')
-              renameFile newFile karmaFile
-              for_ closedTasks $ \(task, mAssignee) ->
-                for_ mAssignee $ \assignee ->
-                  sendMsg serv (BSC.pack $ channel cfg) $
-                    encodeUtf8 assignee
-                      <> " closed ticket #"
-                      <> BSC.pack (show task)
+          handle
+            (\e -> syslog Warning $ "[redmineLoop] " ++ show (e :: IOException))
+            (do
+              json <- LBS.readFile karmaFile
+              case eitherDecode json of
+                Left err -> syslog Error $
+                  "[redmineLoop] eitherDecode: " ++ err
+                Right obj -> do
+                  let obj' = V.foldl' maybeInc obj closedTasks
+                      maybeInc o (_, Just nick) =
+                        snd $ increment (sanitize nick) o
+                      maybeInc o _              = o
+                      newFile = karmaFile ++ ".new"
+                  LBS.writeFile newFile (encode obj')
+                  renameFile newFile karmaFile
+                  for_ closedTasks $ \(task, mAssignee) ->
+                    for_ mAssignee $ \assignee ->
+                      sendMsg serv (BSC.pack $ channel cfg) $
+                        encodeUtf8 assignee
+                          <> " closed ticket #"
+                          <> BSC.pack (show task)
+            )
+          return newDate
+      redmineLoop rm newDate
