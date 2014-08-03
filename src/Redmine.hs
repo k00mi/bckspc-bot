@@ -85,7 +85,7 @@ initRedmine cfg serv karmaVar = for_ (redmine cfg) $ \rm -> forkIO $ do
       Right date -> redmineLoop rm date
   where
     redmineLoop rm date = do
-      threadDelay $ 10^6 * 60 * 60 -- 1 hour
+      threadDelay $ 10^6 * 60 * rmInterval rm
       eitherNew <- getClosedByAfter rm date
       newDate <- case eitherNew of
         Left err -> do
