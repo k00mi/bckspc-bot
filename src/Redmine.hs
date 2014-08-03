@@ -5,13 +5,13 @@ import           Control.Concurrent         (withMVar, MVar, forkIO,
                                             threadDelay)
 import           Control.Exception          (handle, IOException)
 import           Data.Aeson                 (eitherDecode, (.:), (.:?),
-                                            Value(..), Object, encode)
-import           Data.Aeson.Types           (parseEither, FromJSON, Parser)
+                                            Object, encode)
+import           Data.Aeson.Types           (FromJSON, Parser)
 import qualified Data.ByteString.Char8      as BSC
 import qualified Data.ByteString.Lazy       as LBS
 import           Data.Foldable              (for_)
 import           Data.Monoid
-import           Data.Text                  (Text, pack)
+import           Data.Text                  (Text)
 import           Data.Text.Encoding         (encodeUtf8)
 import           Data.Traversable           (traverse)
 import qualified Data.Vector                as V
@@ -20,7 +20,7 @@ import           Network.SimpleIRC
 import           System.Directory           (renameFile)
 import           System.Posix.Syslog
 
-import Config
+import Config (Config(channel, redmine), Redmine(..))
 import Utils
 
 option :: String -> Redmine -> Redmine
