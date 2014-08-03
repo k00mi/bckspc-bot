@@ -92,27 +92,34 @@ initRedmine cfg serv karmaVar = for_ (redmine cfg) $ \rm -> forkIO $ do
           syslog Warning $ "[redmineLoop] getClosedByAfter: " ++ err
           return date
         Right (closedTasks, newDate) -> withMVar karmaVar $ \karmaFile -> do
-          handle
-            (\e -> syslog Warning $ "[redmineLoop] " ++ show (e :: IOException))
-            (do
-              json <- LBS.readFile karmaFile
-              case eitherDecode json of
-                Left err -> syslog Error $
-                  "[redmineLoop] eitherDecode: " ++ err
-                Right obj -> do
-                  let obj' = V.foldl' maybeInc obj closedTasks
-                      maybeInc o (_, Just nick) =
-                        snd $ increment (sanitize nick) o
-                      maybeInc o _              = o
-                      newFile = karmaFile ++ ".new"
-                  LBS.writeFile newFile (encode obj')
-                  renameFile newFile karmaFile
-                  for_ closedTasks $ \(task, mAssignee) ->
-                    for_ mAssignee $ \assignee ->
-                      sendMsg serv (BSC.pack $ channel cfg) $
-                        encodeUtf8 assignee
-                          <> " closed ticket #"
-                          <> BSC.pack (show task)
-            )
+          giveKarma closedTasks karmaFile
           return newDate
       redmineLoop rm newDate
+
+    giveKarma :: V.Vector (Int, Maybe Text) -> String -> IO ()
+    giveKarma closedTasks karmaFile =
+      handle
+        (\e -> syslog Warning $ "[redmineLoop] " ++ show (e :: IOException))
+        (do updateKarmaFile karmaFile $ \obj ->
+                let maybeInc o (_, Just nick) =
+                      snd $ increment (sanitize nick) o
+                    maybeInc o _              = o
+                in V.foldl' maybeInc obj closedTasks
+            for_ closedTasks $ \(task, mAssignee) ->
+              for_ mAssignee $ \assignee ->
+                sendMsg serv (BSC.pack $ channel cfg) $
+                  encodeUtf8 assignee
+                    <> " closed ticket #"
+                    <> BSC.pack (show task)
+        )
+
+updateKarmaFile :: String -> (Object -> Object) -> IO ()
+updateKarmaFile file f = do
+  json <- LBS.readFile file
+  case eitherDecode json of
+    Left err -> syslog Error $
+      "[redmineLoop] eitherDecode: " ++ err
+    Right obj -> do
+      let newFile = file ++ ".new"
+      LBS.writeFile newFile (encode $ f obj)
+      renameFile newFile file
