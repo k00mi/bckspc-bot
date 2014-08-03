@@ -14,7 +14,6 @@ import           Data.Monoid
 import           Data.Text                  (Text)
 import           Data.Text.Encoding         (encodeUtf8)
 import           Data.Traversable           (traverse)
-import qualified Data.Vector                as V
 import           Network.HTTP.Client        (applyBasicAuth)
 import           Network.SimpleIRC
 import           System.Directory           (renameFile)
@@ -63,16 +62,22 @@ parseDate o = do
     i .: "updated_on"
 
 getClosedByAfter :: Redmine -> String
-                 -> IO (Either String (V.Vector (Int, Maybe Text), String))
+                 -> IO (Either String ([(Int, Text)], String))
 getClosedByAfter rm date =
     getRedmineJSON (updatedAfter date $ closed rm) $ \o ->
       (,) <$> parseAssignees o <*> parseDate o
   where
     parseAssignees o = do
       assignees <- o .: "issues" >>=
-                    traverse (\i -> (,) <$> i .: "id" <*> assignee i)
-      -- the API can only filter >= date, so we receive one update again
-      return $ V.take (V.length assignees - 1) assignees
+                    traverse
+                      (\i -> (,,) <$> i .: "id"
+                                  <*> assignee i
+                                  <*> i .: "updated_on")
+      return [ (task, asgne)
+             | (task, Just asgne, date') <- assignees
+             -- the API can only filter >= date, so we receive one update again
+             , date' /= date
+             ]
 
     assignee o = o .:? "assigned_to" >>= traverse (.: "name")
 
@@ -96,21 +101,18 @@ initRedmine cfg serv karmaVar = for_ (redmine cfg) $ \rm -> forkIO $ do
           return newDate
       redmineLoop rm newDate
 
-    giveKarma :: V.Vector (Int, Maybe Text) -> String -> IO ()
+    giveKarma :: [(Int, Text)] -> String -> IO ()
     giveKarma closedTasks karmaFile =
       handle
         (\e -> syslog Warning $ "[redmineLoop] " ++ show (e :: IOException))
         (do updateKarmaFile karmaFile $ \obj ->
-                let maybeInc o (_, Just nick) =
-                      snd $ increment (sanitize nick) o
-                    maybeInc o _              = o
-                in V.foldl' maybeInc obj closedTasks
-            for_ closedTasks $ \(task, mAssignee) ->
-              for_ mAssignee $ \assignee ->
-                sendMsg serv (BSC.pack $ channel cfg) $
-                  encodeUtf8 assignee
-                    <> " closed ticket #"
-                    <> BSC.pack (show task)
+                let inc o (_, nick) = snd $ increment (sanitize nick) o
+                in foldl inc obj closedTasks
+            for_ closedTasks $ \(task, assignee) ->
+              sendMsg serv (BSC.pack $ channel cfg) $
+                encodeUtf8 assignee
+                  <> " closed ticket #"
+                  <> BSC.pack (show task)
         )
 
 updateKarmaFile :: String -> (Object -> Object) -> IO ()

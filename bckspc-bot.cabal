@@ -32,7 +32,6 @@ executable bckspc-bot
                  unordered-containers,
                  text,
                  attoparsec,
-                 vector,
                  hsyslog,
                  directory
   extensions: TemplateHaskell,
