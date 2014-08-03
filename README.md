@@ -44,6 +44,8 @@ bckspc-bot is a daemon and supports the usual start/stop/restart commands.
 
 * Voice members who are currently in the space.
 
+* Give karma for completing redmine issues.
+
 ## Configuration
 
 bckspc-bot requires a JSON configuration file whose location is read from the
@@ -73,9 +75,13 @@ The following fields are accepted:
 
   <dt>server</dt>
   <dd>The IRC server to connect to.</dd>
-
+      
   <dt>port</dt>
   <dd>The port on which to connect to the server.</dd>
+  
+  <dt>redmine</dt>
+  <dd>Optional. Object containing field "url" (URL of a Redmine project, should end with "/issues.json?"),
+      "user" and "password" (both optional, used for basic HTTP authentication).</dd>
 </dl>
 
 See [the provided example file](cfg.json).
