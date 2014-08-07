@@ -195,7 +195,8 @@ toString = T.intercalate ", " . map (\(nick, score) ->
 
 alarm :: [Text] -> EventEnv ()
 alarm args = do
-    publish "psa/alarm" $ encodeUtf8 $ T.unwords args
+    alarm <- asks (alarmTopic . mqttEnv)
+    publish alarm $ encodeUtf8 $ T.unwords args
     respond "ALAAAARM"
 
 safeIO :: IO a -> EventEnv (Either IOError a)
