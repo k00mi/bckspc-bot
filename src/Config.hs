@@ -20,6 +20,9 @@ data Config = Config
             , nick        :: String
             , password    :: Maybe String
             , redmine     :: Maybe Redmine
+            , mqttHost    :: String
+            , pizzaTopic  :: String
+            , alarmTopic  :: String
             }
 
 data Redmine = Redmine
@@ -48,6 +51,9 @@ instance FromJSON Config where
                            <*> v .:? "nick" .!= "b4ckspace"
                            <*> v .:? "password"
                            <*> (v .:? "redmine" >>= traverse parseJSON)
+                           <*> v .:  "mqttHost"
+                           <*> v .:  "pizzaTopic"
+                           <*> v .:  "alarmTopic"
     parseJSON _          = empty
 
 readConfigFile :: FilePath -> IO (Either String Config)

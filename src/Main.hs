@@ -2,17 +2,22 @@
 
 import           Control.Applicative
 import           Control.Concurrent         (MVar, newMVar)
-import           Control.Monad
+import           Control.Exception          (catch, SomeException(..))
 import           Data.Foldable              (for_)
 import           Data.Text                  (isPrefixOf)
 import qualified Data.Text                  as T
 import           Data.Text.Encoding         (decodeUtf8)
 import qualified Data.Map                   as M
+import           Data.String
 import           System.Environment         (lookupEnv)
+import           MQTT                       (MQTT)
+import qualified MQTT
+import           MQTT.Logger
 import           Network.SimpleIRC
 import           System.Posix.Daemonize
+import           System.Posix.Syslog
 
-import EventEnv (runEnv)
+import EventEnv (runEnv, MQTTEnv(MQTTEnv))
 import Commands
 import Config
 import Monitor
@@ -42,11 +47,14 @@ bot cfg = simpleDaemon
 startBot :: Config -> IO ()
 startBot cfg = do
     fileVar <- newMVar (karmaFile cfg)
+    mqtt <- mqttConnect cfg
+    let mqttEnv = MQTTEnv mqtt (fromString $ pizzaTopic cfg)
+                               (fromString $ alarmTopic cfg)
     let ircCfg = (mkDefaultConfig (serv cfg) $ nick cfg)
                    { cChannels = [channel cfg]
                    , cPort     = port cfg
                    , cEvents   = [Privmsg $
-                                    onMessage commands (statusUrl cfg) fileVar]
+                                    onMessage commands (statusUrl cfg) fileVar mqttEnv]
                    , cUsername = nick cfg
                    , cRealname = "bckspc"
                    , cPass     = password cfg
@@ -63,12 +71,30 @@ startBot cfg = do
       res
 
 
-onMessage :: CommandMap -> String -> MVar String -> EventFunc
-onMessage cmds url fileVar s message =
+onMessage :: CommandMap -> String -> MVar String -> MQTTEnv -> EventFunc
+onMessage cmds url fileVar mqtt s message =
     case T.words $ decodeUtf8 $ mMsg message of
         (name:"+1":_) -> applyCmd addKarma name
         (cmd:args)     | "!" `isPrefixOf` cmd
                       -> for_ (M.lookup (T.tail cmd) cmds) (`applyCmd` args)
         _             -> pure ()
   where
-    applyCmd c args = runEnv (c args) url fileVar s message
+    applyCmd c args = runEnv (c args) url fileVar s message mqtt
+
+
+mqttConnect :: Config -> IO MQTT
+mqttConnect cfg = do
+    mMqtt <- MQTT.connect MQTT.def
+                   { MQTT.cHost = mqttHost cfg
+                   , MQTT.cKeepAlive = Just 60
+                   , MQTT.cClientID = "bckspc-bot"
+                   , MQTT.cConnectTimeout = Just 10
+                   , MQTT.cReconnPeriod = Just 10
+                   , MQTT.cLogger = stdLogger
+                   }
+    maybe (error "Server rufused connection") return mMqtt
+  `catch`
+    \(SomeException e) ->
+        fatalError $ "Failed connecting to MQTT broker: " ++ show e
+  where
+    syslogLogger = Logger (syslog Info) (syslog Warning) (syslog Error)

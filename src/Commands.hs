@@ -18,7 +18,7 @@ import           Text.Read                  (readMaybe)
 import qualified Data.ByteString.Lazy       as BL
 import           Data.Text                  (Text, pack, unpack)
 import qualified Data.Text                  as T
-import           Data.Text.Encoding         (decodeUtf8)
+import           Data.Text.Encoding         (decodeUtf8, encodeUtf8)
 import           Data.Text.Read             (decimal)
 import qualified Data.Map                   as M
 import qualified Data.HashMap.Strict        as HM
@@ -83,7 +83,10 @@ pizza args =
       arg:_ -> either (const parseErr) notifyIn $ getTime arg
   where
     notifyIn t = do
-        sendTimeUp <- asIO $ respondNick "Time is up!"
+        sendTimeUp <- asIO $ do
+            respondNick "Time is up!"
+            pizzaTopic <- asks (pizzaTopic . mqttEnv)
+            publish pizzaTopic ""
         lift . forkIO $ do
             threadDelay t
             sendTimeUp
@@ -195,6 +198,7 @@ toString = T.intercalate ", " . map (\(nick, score) ->
 alarm :: [Text] -> EventEnv ()
 alarm args = do
     lift . broadcast "irc_alarm" $ T.unwords args
+    publish "psa/alarm" $ encodeUtf8 $ T.unwords args
     respond "ALAAAARM"
 
 safeIO :: IO a -> EventEnv (Either IOError a)
