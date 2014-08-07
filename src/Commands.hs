@@ -22,7 +22,6 @@ import           Data.Text.Encoding         (decodeUtf8, encodeUtf8)
 import           Data.Text.Read             (decimal)
 import qualified Data.Map                   as M
 import qualified Data.HashMap.Strict        as HM
-import           Data.HashMap.Strict        ((!))
 import           Control.Concurrent         (forkIO, threadDelay)
 import           System.IO.Error            (tryIOError)
 import           System.Directory           (renameFile)
@@ -90,7 +89,6 @@ pizza args =
         lift . forkIO $ do
             threadDelay t
             sendTimeUp
-            broadcast "pizza_timer" "1"
         respondNick "I won't forget it!"
 
     parseErr = respondNick "Could not parse duration"
@@ -197,7 +195,6 @@ toString = T.intercalate ", " . map (\(nick, score) ->
 
 alarm :: [Text] -> EventEnv ()
 alarm args = do
-    lift . broadcast "irc_alarm" $ T.unwords args
     publish "psa/alarm" $ encodeUtf8 $ T.unwords args
     respond "ALAAAARM"
 

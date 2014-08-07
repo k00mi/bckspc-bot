@@ -4,7 +4,6 @@ module Utils
   ( sanitize
   , avoidHighlighting
   , increment
-  , broadcast
   , getJSONWith
   , getJSON
   , getMembersPresent
@@ -28,9 +27,6 @@ import           Data.Text.Encoding         (encodeUtf8)
 import qualified Data.ByteString.Lazy       as LBS
 import           Control.Concurrent.MVar
 import           Network.SimpleIRC
-import           Network.Socket             hiding (sendTo)
-import           Network.Socket.ByteString  (sendTo)
-import           Network.BSD                (getProtocolNumber)
 import           Network.HTTP.Client        (parseUrl, newManager, httpLbs,
                                             HttpException, responseBody,
                                             Request)
@@ -59,15 +55,6 @@ increment nick o = (truncate new, o')
 
     add (Number x) (Number y) = Number $ x + y
     add _ _ = error "add: Object contains non-Numbers."
-
-
-broadcast :: Text -> Text -> IO ()
-broadcast name msg = void $ do
-    let addr = SockAddrInet 5042 0xffffffff
-    proto <- getProtocolNumber "udp"
-    sock <- socket AF_INET Datagram proto
-    setSocketOption sock Broadcast sOL_SOCKET
-    sendTo sock ("COMMON,0," <> encodeUtf8 (T.snoc name ',') <> encodeUtf8 msg) addr
 
 
 getURLTransformRQ :: (Request -> Request) -> String -> IO LBS.ByteString
