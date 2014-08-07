@@ -90,7 +90,7 @@ mqttConnect cfg = do
                    , MQTT.cClientID = "bckspc-bot"
                    , MQTT.cConnectTimeout = Just 10
                    , MQTT.cReconnPeriod = Just 10
-                   , MQTT.cLogger = stdLogger
+                   , MQTT.cLogger = warnings syslogLogger
                    }
     maybe (error "Server rufused connection") return mMqtt
   `catch`
