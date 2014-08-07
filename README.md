@@ -75,13 +75,22 @@ The following fields are accepted:
 
   <dt>server</dt>
   <dd>The IRC server to connect to.</dd>
-      
+
   <dt>port</dt>
   <dd>The port on which to connect to the server.</dd>
-  
+
   <dt>redmine</dt>
   <dd>Optional. Object containing field "url" (URL of a Redmine project, should end with "/issues.json?"),
       "user" and "password" (both optional, used for basic HTTP authentication).</dd>
+
+  <dt>mqttHost</dt>
+  <dd>Host address of the MQTT broker.</dd>
+
+  <dt>pizzaTopic</dt>
+  <dd>Topic to which elapsed pizza timer is to be published.</dd>
+
+  <dt>alarmTopic</dt>
+  <dd>Topic to which the content of an !alarm command is to be published.</dd>
 </dl>
 
 See [the provided example file](cfg.json).

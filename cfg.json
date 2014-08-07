@@ -2,4 +2,7 @@
 "statusUrl": "http://status.bckspc.de/spacestatus.php",
 "karmaFile": "./karma",
 "channel":   "#backspace"
+"mqttHost": "localhost",
+"pizzaTopic": "psa/pizza",
+"alarmTopic": "psa/alarm"
 }
