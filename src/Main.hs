@@ -35,19 +35,19 @@ main = do
               (fatalError . ("Error reading config file: " ++))
               pure
               eCfg
-    serviced $ bot cfg
+    mqtt <- mqttConnect cfg
+    serviced $ bot cfg mqtt
 
-bot :: Config -> CreateDaemon ()
-bot cfg = simpleDaemon
-            { program          = const $ startBot cfg
+bot :: Config -> MQTT -> CreateDaemon ()
+bot cfg mqtt = simpleDaemon
+            { program          = const $ startBot cfg mqtt
             , user             = Just "ircbot"
             , pidfileDirectory = pidDir cfg
             }
 
-startBot :: Config -> IO ()
-startBot cfg = do
+startBot :: Config -> MQTT -> IO ()
+startBot cfg mqtt = do
     fileVar <- newMVar (karmaFile cfg)
-    mqtt <- mqttConnect cfg
     let mqttEnv = MQTTEnv mqtt (fromString $ pizzaTopic cfg)
                                (fromString $ alarmTopic cfg)
     let ircCfg = (mkDefaultConfig (serv cfg) $ nick cfg)
@@ -90,7 +90,7 @@ mqttConnect cfg = do
                    , MQTT.cClientID = "bckspc-bot"
                    , MQTT.cConnectTimeout = Just 10
                    , MQTT.cReconnPeriod = Just 10
-                   , MQTT.cLogger = warnings syslogLogger
+                   , MQTT.cLogger = syslogLogger
                    }
     maybe (error "Server rufused connection") return mMqtt
   `catch`
