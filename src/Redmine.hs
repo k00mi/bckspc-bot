@@ -29,10 +29,10 @@ closed :: Redmine -> Redmine
 closed = option "status_id=closed"
 
 lastUpdatedFirst :: Redmine -> Redmine
-lastUpdatedFirst = option "sort=updated_on:desc"
+lastUpdatedFirst = option "sort=closed_on:desc"
 
-updatedAfter :: String -> Redmine -> Redmine
-updatedAfter date = option ("updated_on=%3E%3D" ++ date) . lastUpdatedFirst
+closedAfter :: String -> Redmine -> Redmine
+closedAfter date = option ("closed_on=%3E%3D" ++ date) . lastUpdatedFirst
 
 latest :: Redmine -> Redmine
 latest = option "limit=1" . lastUpdatedFirst
@@ -59,12 +59,12 @@ parseDate o = do
     i <- case is of
            [] -> fail "No closed issue found."
            i:_ -> pure i
-    i .: "updated_on"
+    i .: "closed_on"
 
 getClosedByAfter :: Redmine -> String
                  -> IO (Either String ([(Int, Text)], String))
 getClosedByAfter rm date =
-    getRedmineJSON (updatedAfter date $ closed rm) $ \o ->
+    getRedmineJSON (closedAfter date $ closed rm) $ \o ->
       (,) <$> parseAssignees o <*> parseDate o
   where
     parseAssignees o = do
@@ -72,7 +72,7 @@ getClosedByAfter rm date =
                     traverse
                       (\i -> (,,) <$> i .: "id"
                                   <*> assignee i
-                                  <*> i .: "updated_on")
+                                  <*> i .: "closed_on")
       return [ (task, asgne)
              | (task, Just asgne, date') <- assignees
              -- the API can only filter >= date, so we receive one update again
