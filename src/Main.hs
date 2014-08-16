@@ -1,7 +1,7 @@
 {-# LANGUAGE OverloadedStrings, TupleSections #-}
 
 import           Control.Applicative
-import           Control.Concurrent         (MVar, newMVar)
+import           Control.Concurrent         (MVar, newMVar, threadDelay)
 import           Control.Exception          (catch, SomeException(..))
 import           Data.Foldable              (for_)
 import           Data.Text                  (isPrefixOf)
@@ -50,8 +50,10 @@ startBot cfg = do
     let ircCfg = (mkDefaultConfig (serv cfg) $ nick cfg)
                    { cChannels = [channel cfg]
                    , cPort     = port cfg
-                   , cEvents   = [Privmsg $
-                                    onMessage commands (statusUrl cfg) fileVar mqttEnv]
+                   , cEvents   = [ Privmsg $
+                                    onMessage commands (statusUrl cfg) fileVar mqttEnv
+                                 , Disconnect onDisconnect
+                                 ]
                    , cUsername = nick cfg
                    , cRealname = "bckspc"
                    , cPass     = password cfg
@@ -100,3 +102,19 @@ mqttConnect cfg = do
     errNoMqtt err = defaultEnv <$ syslog Error ("No MQTT: " ++ err)
     defaultEnv = MQTTEnv Nothing (fromString $ pizzaTopic cfg)
                                  (fromString $ alarmTopic cfg)
+
+
+onDisconnect :: MIrc -> IO ()
+onDisconnect mirc = do
+    syslog Error "Disconnected from IRC"
+    go
+  where
+    go = do
+      syslog Info "Reconnecting..."
+      rslt <- reconnect mirc
+      case rslt of
+        Right _ -> syslog Info "Reconnect succesfull."
+        Left err -> do
+          syslog Error ("Reconnect failed: " ++ show err)
+          threadDelay $ 10 * 10^6
+          go
