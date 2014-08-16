@@ -10,14 +10,13 @@ import           Data.Text.Encoding         (decodeUtf8)
 import qualified Data.Map                   as M
 import           Data.String
 import           System.Environment         (lookupEnv)
-import           MQTT                       (MQTT)
 import qualified MQTT
 import           MQTT.Logger
 import           Network.SimpleIRC
 import           System.Posix.Daemonize
 import           System.Posix.Syslog
 
-import EventEnv (runEnv, MQTTEnv(MQTTEnv))
+import EventEnv (runEnv, MQTTEnv(MQTTEnv, connection))
 import Commands
 import Config
 import Monitor
@@ -35,21 +34,19 @@ main = do
               (fatalError . ("Error reading config file: " ++))
               pure
               eCfg
-    mqtt <- mqttConnect cfg
-    serviced $ bot cfg mqtt
+    serviced $ bot cfg
 
-bot :: Config -> MQTT -> CreateDaemon ()
-bot cfg mqtt = simpleDaemon
-            { program          = const $ startBot cfg mqtt
+bot :: Config -> CreateDaemon ()
+bot cfg = simpleDaemon
+            { program          = const $ startBot cfg
             , user             = Just "ircbot"
             , pidfileDirectory = pidDir cfg
             }
 
-startBot :: Config -> MQTT -> IO ()
-startBot cfg mqtt = do
+startBot :: Config -> IO ()
+startBot cfg = do
     fileVar <- newMVar (karmaFile cfg)
-    let mqttEnv = MQTTEnv mqtt (fromString $ pizzaTopic cfg)
-                               (fromString $ alarmTopic cfg)
+    mqttEnv <- mqttConnect cfg
     let ircCfg = (mkDefaultConfig (serv cfg) $ nick cfg)
                    { cChannels = [channel cfg]
                    , cPort     = port cfg
@@ -82,7 +79,7 @@ onMessage cmds url fileVar mqtt s message =
     applyCmd c args = runEnv (c args) url fileVar s message mqtt
 
 
-mqttConnect :: Config -> IO MQTT
+mqttConnect :: Config -> IO MQTTEnv
 mqttConnect cfg = do
     mMqtt <- MQTT.connect MQTT.def
                    { MQTT.cHost = mqttHost cfg
@@ -92,9 +89,14 @@ mqttConnect cfg = do
                    , MQTT.cReconnPeriod = Just 10
                    , MQTT.cLogger = syslogLogger
                    }
-    maybe (error "Server rufused connection") return mMqtt
+    case mMqtt of
+      Nothing -> errNoMqtt "Broker refused connection."
+      mqtt    -> return $ defaultEnv { connection = mqtt }
   `catch`
     \(SomeException e) ->
-        fatalError $ "Failed connecting to MQTT broker: " ++ show e
+        errNoMqtt $ "Failed connecting to server: " ++ show e
   where
     syslogLogger = Logger (syslog Info) (syslog Warning) (syslog Error)
+    errNoMqtt err = defaultEnv <$ syslog Error ("No MQTT: " ++ err)
+    defaultEnv = MQTTEnv Nothing (fromString $ pizzaTopic cfg)
+                                 (fromString $ alarmTopic cfg)

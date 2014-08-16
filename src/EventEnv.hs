@@ -20,6 +20,7 @@ import           Control.Monad.Trans.Class  (lift)
 import           Control.Applicative
 import           Control.Concurrent         (MVar)
 import           Data.ByteString            (ByteString)
+import           Data.Foldable              (for_)
 import           Data.Maybe
 import           Data.Monoid
 import           Data.Text                  (Text)
@@ -38,7 +39,7 @@ data MsgEnv = MsgEnv
             }
 
 data MQTTEnv = MQTTEnv
-             { connection  :: MQTT
+             { connection  :: Maybe MQTT
              , pizzaTopic  :: MQTT.Topic
              , alarmTopic  :: MQTT.Topic
              }
@@ -82,5 +83,6 @@ respondNick resp = do
 
 publish :: MQTT.Topic -> ByteString -> EventEnv ()
 publish topic payload = do
-    mqtt <- asks (connection . mqttEnv)
-    lift $ MQTT.publish mqtt MQTT.NoConfirm False topic payload
+    mMqtt <- asks (connection . mqttEnv)
+    for_ mMqtt $ \mqtt ->
+      lift $ MQTT.publish mqtt MQTT.NoConfirm False topic payload
