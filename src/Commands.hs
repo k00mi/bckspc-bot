@@ -131,10 +131,10 @@ karma nicks = onKarmaFile $ \obj -> do
                     let nick = sanitize n
                     in (nick,) <$> o .:? nick .!= 0
             else do
-              score <- o .:? decodeUtf8 sender :: Parser (Maybe Integer)
+              score <- o .:? sanitize (decodeUtf8 sender)
               return $ maybe
                 "You have no karma yet."
-                (\n -> "You have " <> pack (show n) <> " karma.")
+                (\n -> "You have " <> pack (show (n :: Int)) <> " karma.")
                 score
     maybe
       (respondNick "Error parsing karma file")
