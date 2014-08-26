@@ -10,8 +10,8 @@ import           Data.Text.Encoding         (decodeUtf8)
 import qualified Data.Map                   as M
 import           Data.String
 import           System.Environment         (lookupEnv)
-import qualified MQTT
-import           MQTT.Logger
+import qualified Network.MQTT               as MQTT
+import           Network.MQTT.Logger
 import           Network.SimpleIRC
 import           System.Posix.Daemonize
 import           System.Posix.Syslog
@@ -83,7 +83,7 @@ onMessage cmds url fileVar mqtt s message =
 
 mqttConnect :: Config -> IO MQTTEnv
 mqttConnect cfg = do
-    mMqtt <- MQTT.connect MQTT.def
+    mMqtt <- MQTT.connect MQTT.defaultConfig
                    { MQTT.cHost = mqttHost cfg
                    , MQTT.cKeepAlive = Just 60
                    , MQTT.cClientID = "bckspc-bot"

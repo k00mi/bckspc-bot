@@ -25,8 +25,8 @@ import           Data.Maybe
 import           Data.Monoid
 import           Data.Text                  (Text)
 import           Data.Text.Encoding         (encodeUtf8, decodeUtf8)
-import           MQTT                       (MQTT)
-import qualified MQTT
+import           Network.MQTT               (MQTT)
+import qualified Network.MQTT               as MQTT
 import           Network.SimpleIRC
 
 

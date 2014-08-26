@@ -33,7 +33,7 @@ executable bckspc-bot
                  text,
                  attoparsec,
                  hsyslog,
-                 mqtt-hs >= 0.1,
+                 mqtt-hs >= 0.2,
                  directory
   extensions: TemplateHaskell,
               OverloadedStrings,
