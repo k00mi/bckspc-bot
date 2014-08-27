@@ -85,7 +85,7 @@ pizza args =
         sendTimeUp <- asIO $ do
             respondNick "Time is up!"
             pizzaTopic <- asks (pizzaTopic . mqttEnv)
-            publish pizzaTopic ""
+            publish pizzaTopic "1"
         lift . forkIO $ do
             threadDelay t
             sendTimeUp
