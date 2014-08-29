@@ -19,6 +19,7 @@ import           Control.Monad.Trans.Reader
 import           Control.Monad.Trans.Class  (lift)
 import           Control.Applicative
 import           Control.Concurrent         (MVar)
+import           Control.Exception
 import           Data.ByteString            (ByteString)
 import           Data.Foldable              (for_)
 import           Data.Maybe
@@ -28,6 +29,7 @@ import           Data.Text.Encoding         (encodeUtf8, decodeUtf8)
 import           Network.MQTT               (MQTT)
 import qualified Network.MQTT               as MQTT
 import           Network.SimpleIRC
+import           System.Posix.Syslog
 
 
 data MsgEnv = MsgEnv
@@ -68,7 +70,9 @@ respond :: Text -> EventEnv ()
 respond resp = do
     s <- asks server
     origin <- fromJust . mOrigin <$> asks msg
-    lift $ sendMsg s origin $ encodeUtf8 resp
+    lift $ sendMsg s origin (encodeUtf8 resp)
+          `catch`
+            \e -> syslog Error $ "respond: " ++ show (e :: IOException)
 
 
 respondNick :: Text -> EventEnv ()
