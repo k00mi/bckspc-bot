@@ -18,12 +18,10 @@ import           Control.Monad
 import           Control.Applicative
 import           Control.Exception          (catch)
 import           Data.Maybe                 (fromMaybe)
-import           Data.Monoid                ((<>))
 import           Data.Char                  (toLower, isLetter)
 import           Data.ByteString            (ByteString)
 import           Data.Text                  (Text, dropAround)
 import qualified Data.Text                  as T
-import           Data.Text.Encoding         (encodeUtf8)
 import qualified Data.ByteString.Lazy       as LBS
 import           Control.Concurrent.MVar
 import           Network.SimpleIRC

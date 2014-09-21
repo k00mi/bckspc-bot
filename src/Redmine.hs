@@ -111,7 +111,7 @@ initRedmine cfg serv karmaVar = for_ (redmine cfg) $ \rm -> forkIO $ do
             for_ closedTasks $ \(task, assignee) ->
               sendMsg serv (BSC.pack $ channel cfg) $
                 encodeUtf8 assignee
-                  <> " closed ticket #"
+                  <> " completed ticket #"
                   <> BSC.pack (show task)
         )
 
