@@ -84,7 +84,6 @@ pizza args =
     notifyIn t = do
         sendTimeUp <- asIO $ do
             respondNick "Time is up!"
-            pizzaTopic <- asks (pizzaTopic . mqttEnv)
             publish pizzaTopic "1"
         lift . forkIO $ do
             threadDelay t
@@ -195,9 +194,9 @@ toString = T.intercalate ", " . map (\(nick, score) ->
 
 alarm :: [Text] -> EventEnv ()
 alarm args = do
-    alarm <- asks (alarmTopic . mqttEnv)
-    publish alarm $ encodeUtf8 $ T.unwords args
+    publish alarmTopic $ encodeUtf8 $ T.unwords args
     respond "ALAAAARM"
+
 
 safeIO :: IO a -> EventEnv (Either IOError a)
 safeIO = lift . tryIOError

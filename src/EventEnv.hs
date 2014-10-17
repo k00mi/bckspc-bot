@@ -85,8 +85,9 @@ respondNick resp = do
                 else decodeUtf8 nick <> ": " <> resp
 
 
-publish :: MQTT.Topic -> ByteString -> EventEnv ()
-publish topic payload = do
+publish :: (MQTTEnv -> MQTT.Topic) -> ByteString -> EventEnv ()
+publish getTopic payload = do
     mMqtt <- asks (connection . mqttEnv)
+    topic <- asks (getTopic . mqttEnv)
     for_ mMqtt $ \mqtt ->
       lift $ MQTT.publish mqtt MQTT.NoConfirm False topic payload
