@@ -44,10 +44,12 @@ commands = M.fromList [ ("echo", echo)
                       , ("karma", karma)
                       , ("karmatop", karmatop)
                       , ("alarm", alarm)
+                      , ("sound", sound)
                       , ("i", inspace)
                       , ("p", pizza)
                       , ("a", alarm)
                       , ("k", karma)
+                      , ("s", sound)
                       ]
 
 
@@ -196,6 +198,10 @@ alarm :: [Text] -> EventEnv ()
 alarm args = do
     publish alarmTopic $ encodeUtf8 $ T.unwords args
     respond "ALAAAARM"
+
+
+sound :: [Text] -> EventEnv ()
+sound = publish soundTopic . encodeUtf8 . T.unwords
 
 
 safeIO :: IO a -> EventEnv (Either IOError a)

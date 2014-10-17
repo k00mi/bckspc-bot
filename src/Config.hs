@@ -23,6 +23,7 @@ data Config = Config
             , mqttHost    :: String
             , pizzaTopic  :: String
             , alarmTopic  :: String
+            , soundTopic  :: String
             }
 
 data Redmine = Redmine
@@ -54,6 +55,7 @@ instance FromJSON Config where
                            <*> v .:  "mqttHost"
                            <*> v .:  "pizzaTopic"
                            <*> v .:  "alarmTopic"
+                           <*> v .:  "soundTopic"
     parseJSON _          = empty
 
 readConfigFile :: FilePath -> IO (Either String Config)

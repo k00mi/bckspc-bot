@@ -44,6 +44,7 @@ data MQTTEnv = MQTTEnv
              { connection  :: Maybe MQTT
              , pizzaTopic  :: MQTT.Topic
              , alarmTopic  :: MQTT.Topic
+             , soundTopic  :: MQTT.Topic
              }
 
 

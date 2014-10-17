@@ -102,6 +102,7 @@ mqttConnect cfg = do
     errNoMqtt err = defaultEnv <$ syslog Error ("No MQTT: " ++ err)
     defaultEnv = MQTTEnv Nothing (fromString $ pizzaTopic cfg)
                                  (fromString $ alarmTopic cfg)
+                                 (fromString $ soundTopic cfg)
 
 
 onDisconnect :: MIrc -> IO ()
