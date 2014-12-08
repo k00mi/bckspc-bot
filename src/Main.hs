@@ -83,7 +83,7 @@ onMessage cmds url fileVar mqtt s message =
 
 mqttConnect :: Config -> IO MQTTEnv
 mqttConnect cfg = do
-    mMqtt <- MQTT.connect MQTT.defaultConfig
+    mqtt <- MQTT.connect MQTT.defaultConfig
                    { MQTT.cHost = mqttHost cfg
                    , MQTT.cKeepAlive = Just 60
                    , MQTT.cClientID = "bckspc-bot"
@@ -91,14 +91,15 @@ mqttConnect cfg = do
                    , MQTT.cReconnPeriod = Just 10
                    , MQTT.cLogger = syslogLogger
                    }
-    case mMqtt of
-      Nothing -> errNoMqtt "Broker refused connection."
-      mqtt    -> return $ defaultEnv { connection = mqtt }
+    return $ defaultEnv { connection = Just mqtt }
   `catch`
     \(SomeException e) ->
         errNoMqtt $ "Failed connecting to server: " ++ show e
   where
-    syslogLogger = Logger (syslog Info) (syslog Warning) (syslog Error)
+    syslogLogger = Logger (syslog Debug)
+                          (syslog Info)
+                          (syslog Warning)
+                          (syslog Error)
     errNoMqtt err = defaultEnv <$ syslog Error ("No MQTT: " ++ err)
     defaultEnv = MQTTEnv Nothing (fromString $ pizzaTopic cfg)
                                  (fromString $ alarmTopic cfg)
