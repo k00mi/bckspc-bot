@@ -3,6 +3,7 @@
 import           Control.Applicative
 import           Control.Concurrent         (MVar, newMVar, threadDelay)
 import           Control.Exception          (catch, SomeException(..))
+import qualified Data.ByteString.Char8      as B
 import           Data.Foldable              (for_)
 import           Data.Text                  (isPrefixOf)
 import qualified Data.Text                  as T
@@ -61,7 +62,7 @@ startBot cfg = do
     res <- connect
             ircCfg
             True
-            False
+            (syslog Debug . B.unpack)
     either
       ioError
       (\s -> do

@@ -21,7 +21,7 @@ executable bckspc-bot
   other-modules: Commands, Utils, EventEnv, Config, Monitor, Redmine
   build-depends: base >=4.6,
                  bytestring >=0.10.4.0,
-                 simpleirc >=0.3,
+                 simpleirc >=0.4,
                  containers >=0.5,
                  http-client >=0.3.5,
                  http-client-tls,
