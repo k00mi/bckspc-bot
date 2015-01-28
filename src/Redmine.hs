@@ -26,7 +26,7 @@ option :: String -> Redmine -> Redmine
 option opt rm = rm { rmURL = rmURL rm ++ opt ++ "&" }
 
 closed :: Redmine -> Redmine
-closed = option "status_id=closed"
+closed = option "status_id=4"
 
 lastUpdatedFirst :: Redmine -> Redmine
 lastUpdatedFirst = option "sort=closed_on:desc"
