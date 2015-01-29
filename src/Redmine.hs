@@ -4,14 +4,14 @@ import           Control.Applicative
 import           Control.Concurrent         (withMVar, MVar, forkIO,
                                             threadDelay)
 import           Control.Exception          (handle, IOException)
-import           Data.Aeson                 (eitherDecode, (.:), (.:?),
-                                            Object, encode)
+import           Data.Aeson                 (eitherDecode, (.:), Object, encode)
 import           Data.Aeson.Types           (FromJSON, Parser)
 import qualified Data.ByteString.Char8      as BSC
 import qualified Data.ByteString.Lazy       as LBS
 import           Data.Foldable              (for_)
 import           Data.Monoid
 import           Data.Text                  (Text)
+import qualified Data.Text                  as T
 import           Data.Text.Encoding         (encodeUtf8)
 import           Data.Traversable           (traverse)
 import           Network.HTTP.Client        (applyBasicAuth)
@@ -21,6 +21,16 @@ import           System.Posix.Syslog
 
 import Config (Config(channel, redmine), Redmine(..))
 import Utils
+
+data Issue = Issue
+           { issueID :: Int
+           , issueAssignee :: Text
+           , issueSubject :: Text
+           }
+
+project :: Redmine -> Redmine
+project rm =
+    rm { rmURL = rmURL rm ++ "/projects/" ++ rmProject rm ++ "/issues.json?" }
 
 option :: String -> Redmine -> Redmine
 option opt rm = rm { rmURL = rmURL rm ++ opt ++ "&" }
@@ -51,7 +61,7 @@ getRedmineJSON :: FromJSON a
 getRedmineJSON = getJSONWith . getRedmine
 
 getLatestClosed :: Redmine -> IO (Either String String)
-getLatestClosed rm = getRedmineJSON (latest $ closed rm) parseDate
+getLatestClosed rm = getRedmineJSON (latest $ closed $ project rm) parseDate
 
 parseDate :: FromJSON a => Object -> Parser a
 parseDate o = do
@@ -62,24 +72,27 @@ parseDate o = do
     i .: "closed_on"
 
 getClosedByAfter :: Redmine -> String
-                 -> IO (Either String ([(Int, Text)], String))
+                 -> IO (Either String ([Issue], String))
 getClosedByAfter rm date =
-    getRedmineJSON (closedAfter date $ closed rm) $ \o ->
-      (,) <$> parseAssignees o <*> parseDate o
+    getRedmineJSON (closedAfter date $ closed $ project rm) $ \o ->
+      (,) <$> parseIssue o <*> parseDate o
   where
-    parseAssignees o = do
+    parseIssue o = do
       assignees <- o .: "issues" >>=
                     traverse
-                      (\i -> (,,) <$> i .: "id"
-                                  <*> assignee i
-                                  <*> i .: "closed_on")
-      return [ (task, asgne)
-             | (task, Just asgne, date') <- assignees
+                      (\i -> optional $ do
+                                issue <- Issue <$> i .: "id"
+                                               <*> assignee i
+                                               <*> i .: "subject"
+                                closedOn <- i .: "closed_on"
+                                return (issue, closedOn))
+      return [ issue
+             | Just (issue, date') <- assignees
              -- the API can only filter >= date, so we receive one update again
              , date' /= date
              ]
 
-    assignee o = o .:? "assigned_to" >>= traverse (.: "name")
+    assignee o = o .: "assigned_to" >>= (.: "name")
 
 
 initRedmine :: Config -> MIrc -> MVar String -> IO ()
@@ -97,22 +110,22 @@ initRedmine cfg serv karmaVar = for_ (redmine cfg) $ \rm -> forkIO $ do
           syslog Warning $ "[redmineLoop] getClosedByAfter: " ++ err
           return date
         Right (closedTasks, newDate) -> withMVar karmaVar $ \karmaFile -> do
-          giveKarma closedTasks karmaFile
+          giveKarma rm closedTasks karmaFile
           return newDate
       redmineLoop rm newDate
 
-    giveKarma :: [(Int, Text)] -> String -> IO ()
-    giveKarma closedTasks karmaFile =
+    giveKarma :: Redmine -> [Issue] -> String -> IO ()
+    giveKarma rm closedTasks karmaFile =
       handle
         (\e -> syslog Warning $ "[redmineLoop] " ++ show (e :: IOException))
         (do updateKarmaFile karmaFile $ \obj ->
-                let inc o (_, nick) = snd $ increment (sanitize nick) o
+                let inc o i = snd $ increment (sanitize (issueAssignee i)) o
                 in foldl inc obj closedTasks
-            for_ closedTasks $ \(task, assignee) ->
-              sendMsg serv (BSC.pack $ channel cfg) $
-                encodeUtf8 assignee
-                  <> " completed ticket #"
-                  <> BSC.pack (show task)
+            for_ closedTasks $ \i ->
+              sendMsg serv (BSC.pack $ channel cfg) $ encodeUtf8 $
+                issueAssignee i <> " completed ticket \"" <> issueSubject i
+                <> "\" <" <> T.pack (rmURL rm) <> "/issues/"
+                <> T.pack (show (issueID i)) <> ">"
         )
 
 updateKarmaFile :: String -> (Object -> Object) -> IO ()

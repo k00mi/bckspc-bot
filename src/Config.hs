@@ -28,6 +28,7 @@ data Config = Config
 
 data Redmine = Redmine
              { rmURL      :: String
+             , rmProject  :: String
              , rmInterval :: Int
              , rmUser     :: Maybe String
              , rmPassword :: Maybe String
@@ -36,6 +37,7 @@ data Redmine = Redmine
 instance FromJSON Redmine where
     parseJSON (Object v) = Redmine
                            <$> v .:  "url"
+                           <*> v .:  "project"
                            <*> v .:  "interval"
                            <*> v .:? "user"
                            <*> v .:? "password"
