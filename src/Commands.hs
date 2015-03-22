@@ -86,7 +86,7 @@ pizza args =
     notifyIn t = do
         sendTimeUp <- asIO $ do
             respondNick "Time is up!"
-            publish pizzaTopic "1"
+            publish pizzaTopic "expired"
         lift . forkIO $ do
             threadDelay t
             sendTimeUp
