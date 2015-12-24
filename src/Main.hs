@@ -7,7 +7,8 @@ import qualified Data.ByteString.Char8      as B
 import           Data.Foldable              (for_)
 import           Data.Text                  (isPrefixOf)
 import qualified Data.Text                  as T
-import           Data.Text.Encoding         (decodeUtf8)
+import           Data.Text.Encoding         (decodeUtf8With)
+import           Data.Text.Encoding.Error   (lenientDecode)
 import qualified Data.Map                   as M
 import           Data.String
 import           System.Environment         (lookupEnv)
@@ -73,7 +74,7 @@ startBot cfg = do
 
 onMessage :: CommandMap -> String -> MVar String -> MQTTEnv -> EventFunc
 onMessage cmds url fileVar mqtt s message =
-    case T.words $ decodeUtf8 $ mMsg message of
+    case T.words $ decodeUtf8With lenientDecode $ mMsg message of
         (name:"+1":_) -> applyCmd addKarma name
         (cmd:args)     | "!" `isPrefixOf` cmd
                       -> for_ (M.lookup (T.tail cmd) cmds) (`applyCmd` args)
