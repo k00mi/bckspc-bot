@@ -28,7 +28,7 @@ import           System.Directory           (renameFile)
 import           Network.SimpleIRC
 import           Data.Aeson                 hiding (Error)
 import           Data.Aeson.Types           hiding (Error)
-import           System.Posix.Syslog
+import           System.IO                  (hPutStrLn, stderr)
 
 import EventEnv
 import Utils
@@ -66,7 +66,7 @@ inspace _ = do
     res <- lift $ getMembersPresent url
     response <- case res of
             Left err -> do
-              lift . syslog Warning $ "inspace: Error fetching JSON: " ++ err
+              lift . hPutStrLn stderr $ "inspace: Error fetching JSON: " ++ err
               pure $ "Error retrieving status information"
             Right (num, nicks)
                 | num == (0 :: Int) -> pure $ "Backspace is empty"
@@ -172,7 +172,7 @@ onKarmaFile action = do
       eitherContent <- safeIO $ BL.readFile file
       case leftMap show eitherContent >>= eitherDecode of
         Left err -> do
-          lift . syslog Error $ "onKarmaFile: " ++ err
+          lift . hPutStrLn stderr $ "onKarmaFile: " ++ err
           respond $ "Could not read karma file: " <> T.pack err
         Right obj -> do
           maybeObj' <- action obj
@@ -183,7 +183,7 @@ onKarmaFile action = do
               renameFile newFile file
             case writeResult of
               Left err -> do
-                lift . syslog Error $ "onKarmaFile: " ++ show err
+                lift . hPutStrLn stderr $ "onKarmaFile: " ++ show err
                 respond $ "Could not write karma file: " <> T.pack (show err)
               Right _ -> pure ()
     lift $ withMVar fileVar $ \_ -> processFile

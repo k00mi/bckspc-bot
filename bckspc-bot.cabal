@@ -28,11 +28,9 @@ executable bckspc-bot
                  aeson >=0.7,
                  transformers >= 0.3,
                  network,
-                 hdaemonize >= 0.4.4,
                  unordered-containers,
                  text,
                  attoparsec,
-                 hsyslog,
                  mqtt-hs >= 0.3,
                  directory
   extensions: TemplateHaskell,

@@ -11,12 +11,11 @@ import           Data.Text.Encoding         (decodeUtf8With)
 import           Data.Text.Encoding.Error   (lenientDecode)
 import qualified Data.Map                   as M
 import           Data.String
-import           System.Environment         (lookupEnv)
 import qualified Network.MQTT               as MQTT
-import           Network.MQTT.Logger
 import           Network.SimpleIRC
-import           System.Posix.Daemonize
-import           System.Posix.Syslog
+import           System.Environment         (getArgs)
+import           System.Exit                (exitFailure)
+import           System.IO                  (hPutStrLn, stderr)
 
 import EventEnv (runEnv, MQTTEnv(MQTTEnv, connection))
 import Commands
@@ -24,26 +23,22 @@ import Config
 import Monitor
 import Redmine
 
+defaultConfigPath :: String
+defaultConfigPath = "/etc/bckspc-bot.conf"
+
+usage :: IO a
+usage = do
+  hPutStrLn stderr "Usage: bckspc-bot [config]"
+  exitFailure
 
 main :: IO ()
 main = do
-    mPath <- lookupEnv "BOT_CONFIG"
-    eCfg  <- maybe
-              (fatalError "BOT_CONFIG environment variable not set")
-              readConfigFile
-              mPath
-    cfg   <- either
-              (fatalError . ("Error reading config file: " ++))
-              pure
-              eCfg
-    serviced $ bot cfg
-
-bot :: Config -> CreateDaemon ()
-bot cfg = simpleDaemon
-            { program          = const $ startBot cfg
-            , user             = Just "ircbot"
-            , pidfileDirectory = pidDir cfg
-            }
+    args <- getArgs
+    cfg <- case args of
+         [] -> readConfigFile defaultConfigPath
+         [cfgPath] -> readConfigFile cfgPath
+         _ -> usage
+    startBot cfg
 
 startBot :: Config -> IO ()
 startBot cfg = do
@@ -63,7 +58,7 @@ startBot cfg = do
     res <- connect
             ircCfg
             True
-            (syslog Debug . B.unpack)
+            (hPutStrLn stderr . B.unpack)
     either
       ioError
       (\s -> do
@@ -91,18 +86,13 @@ mqttConnect cfg = do
                    , MQTT.cClientID = "bckspc-bot"
                    , MQTT.cConnectTimeout = Just 10
                    , MQTT.cReconnPeriod = Just 10
-                   , MQTT.cLogger = syslogLogger
                    }
     return $ defaultEnv { connection = Just mqtt }
   `catch`
     \(SomeException e) ->
         errNoMqtt $ "Failed connecting to server: " ++ show e
   where
-    syslogLogger = Logger (syslog Debug)
-                          (syslog Info)
-                          (syslog Warning)
-                          (syslog Error)
-    errNoMqtt err = defaultEnv <$ syslog Error ("No MQTT: " ++ err)
+    errNoMqtt err = defaultEnv <$ hPutStrLn stderr ("No MQTT: " ++ err)
     defaultEnv = MQTTEnv Nothing (fromString $ pizzaTopic cfg)
                                  (fromString $ alarmTopic cfg)
                                  (fromString $ soundTopic cfg)
@@ -110,15 +100,15 @@ mqttConnect cfg = do
 
 onDisconnect :: MIrc -> IO ()
 onDisconnect mirc = do
-    syslog Error "Disconnected from IRC"
+    hPutStrLn stderr "Disconnected from IRC"
     go
   where
     go = do
-      syslog Info "Reconnecting..."
+      putStrLn "Reconnecting..."
       rslt <- reconnect mirc
       case rslt of
-        Right _ -> syslog Info "Reconnect succesfull."
+        Right _ -> putStrLn "Reconnect succesfull."
         Left err -> do
-          syslog Error ("Reconnect failed: " ++ show err)
+          hPutStrLn stderr ("Reconnect failed: " ++ show err)
           threadDelay $ 10 * 10^6
           go

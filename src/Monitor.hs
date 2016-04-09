@@ -16,7 +16,7 @@ import qualified Data.Text                  as T
 import           Data.Text.Encoding         (decodeUtf8, encodeUtf8)
 import           Network.SimpleIRC          hiding (Nick)
 import           Data.Aeson                 ((.:))
-import           System.Posix.Syslog
+import           System.IO                  (hPutStrLn, stderr)
 
 import Config
 import Utils
@@ -29,12 +29,12 @@ monitor cfg serv = forever $ do
     threadDelay $ 10^6 * 60 * 5 -- 5 minutes
     resp <- getMembersPresent (statusUrl cfg)
     case resp of
-      Left err -> syslog Warning $ "Error retrieving JSON: " ++ err
+      Left err -> hPutStrLn stderr $ "Error retrieving JSON: " ++ err
       Right (numMems, present) -> do
             changeTopic cfg serv numMems
             changeVoice cfg serv present
           `catch`
-            \e -> syslog Warning $ "monitor: " ++ show (e :: IOException)
+            \e -> hPutStrLn stderr $ "monitor: " ++ show (e :: IOException)
 
 
 -- | Voice channel members who are currently present, devoice those who left.
@@ -58,7 +58,7 @@ changeTopic cfg serv num = do
     let (static, current) = breakEnd isSpace topic
         new = if num == 0 then "closed" else "open"
     if current `notElem` ["closed", "open"]
-      then syslog Warning "Topic not correctly formatted"
+      then hPutStrLn stderr "Topic not correctly formatted"
       else when (current /= new) . sendTopic . Just $ static <> new
   where
     sendTopic = sendCmd serv . MTopic (pack $ channel cfg)

@@ -17,7 +17,7 @@ import           Data.Traversable           (traverse)
 import           Network.HTTP.Client        (applyBasicAuth)
 import           Network.SimpleIRC
 import           System.Directory           (renameFile)
-import           System.Posix.Syslog
+import           System.IO                  (hPutStrLn, stderr)
 
 import Config (Config(channel, redmine), Redmine(..))
 import Utils
@@ -99,7 +99,7 @@ initRedmine :: Config -> MIrc -> MVar String -> IO ()
 initRedmine cfg serv karmaVar = for_ (redmine cfg) $ \rm -> forkIO $ do
     eitherDate <- getLatestClosed rm
     case eitherDate of
-      Left err -> syslog Error $ "[redmineLoop] getLatestClosed: " ++ err
+      Left err -> hPutStrLn stderr $ "[redmineLoop] getLatestClosed: " ++ err
       Right date -> redmineLoop rm date
   where
     redmineLoop rm date = do
@@ -107,7 +107,7 @@ initRedmine cfg serv karmaVar = for_ (redmine cfg) $ \rm -> forkIO $ do
       eitherNew <- getClosedByAfter rm date
       newDate <- case eitherNew of
         Left err -> do
-          syslog Warning $ "[redmineLoop] getClosedByAfter: " ++ err
+          hPutStrLn stderr $ "[redmineLoop] getClosedByAfter: " ++ err
           return date
         Right (closedTasks, newDate) -> withMVar karmaVar $ \karmaFile -> do
           giveKarma rm closedTasks karmaFile
@@ -117,7 +117,7 @@ initRedmine cfg serv karmaVar = for_ (redmine cfg) $ \rm -> forkIO $ do
     giveKarma :: Redmine -> [Issue] -> String -> IO ()
     giveKarma rm closedTasks karmaFile =
       handle
-        (\e -> syslog Warning $ "[redmineLoop] " ++ show (e :: IOException))
+        (\e -> hPutStrLn stderr $ "[redmineLoop] " ++ show (e :: IOException))
         (do updateKarmaFile karmaFile $ \obj ->
                 let inc o i = snd $ increment (sanitize (issueAssignee i)) o
                 in foldl inc obj closedTasks
@@ -132,7 +132,7 @@ updateKarmaFile :: String -> (Object -> Object) -> IO ()
 updateKarmaFile file f = do
   json <- LBS.readFile file
   case eitherDecode json of
-    Left err -> syslog Error $
+    Left err -> hPutStrLn stderr $
       "[redmineLoop] eitherDecode: " ++ err
     Right obj -> do
       let newFile = file ++ ".new"

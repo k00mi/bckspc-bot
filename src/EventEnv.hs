@@ -29,7 +29,7 @@ import           Data.Text.Encoding         (encodeUtf8, decodeUtf8)
 import           Network.MQTT               (MQTT)
 import qualified Network.MQTT               as MQTT
 import           Network.SimpleIRC
-import           System.Posix.Syslog
+import           System.IO                  (hPutStrLn, stderr)
 
 
 data MsgEnv = MsgEnv
@@ -73,7 +73,7 @@ respond resp = do
     origin <- fromJust . mOrigin <$> asks msg
     lift $ sendMsg s origin (encodeUtf8 resp)
           `catch`
-            \e -> syslog Error $ "respond: " ++ show (e :: IOException)
+            \e -> hPutStrLn stderr $ "respond: " ++ show (e :: IOException)
 
 
 respondNick :: Text -> EventEnv ()

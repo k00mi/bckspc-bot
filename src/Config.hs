@@ -4,10 +4,12 @@ module Config
   , readConfigFile
   ) where
 
-import           Data.Aeson
-import           Data.Traversable           (traverse)
 import           Control.Applicative
+import           Data.Aeson
 import qualified Data.ByteString.Lazy       as BS
+import           Data.Traversable           (traverse)
+import           System.Exit                (exitFailure)
+import           System.IO                  (hPutStrLn, stderr)
 
 
 data Config = Config
@@ -60,5 +62,11 @@ instance FromJSON Config where
                            <*> v .:  "soundTopic"
     parseJSON _          = empty
 
-readConfigFile :: FilePath -> IO (Either String Config)
-readConfigFile = fmap eitherDecode . BS.readFile
+readConfigFile :: FilePath -> IO Config
+readConfigFile path = do
+    config <- BS.readFile path
+    case eitherDecode config of
+         Right cfg -> return cfg
+         Left err -> do
+           hPutStrLn stderr ("Error reading config file: " ++ err)
+           exitFailure
