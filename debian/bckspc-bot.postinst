@@ -1,0 +1,32 @@
+#!/bin/sh
+# see: dh_installdeb(1)
+
+set -e
+
+BOT_USER=bckspcbot
+
+setup_bckspcbot_user() {
+	if ! getent passwd $BOT_USER >/dev/null; then
+		adduser --quiet --system --home /var/lib/bckspc-bot --shell /usr/sbin/nologin $BOT_USER
+	fi
+}
+
+case "$1" in
+	configure)
+		setup_bckspcbot_user
+	;;
+
+	abort-upgrade|abort-remove|abort-deconfigure)
+	;;
+
+	*)
+		echo "postinst called with unknown argument \`$1'" >&2
+		exit 1
+	;;
+esac
+
+
+#DEBHELPER#
+
+exit 0
+

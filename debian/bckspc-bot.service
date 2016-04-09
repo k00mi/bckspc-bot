@@ -1,0 +1,9 @@
+[Unit]
+Description=the backspace IRC bot
+
+[Service]
+User=bckspcbot
+ExecStart=/usr/bin/bckspc-bot
+
+[Install]
+WantedBy=mult-user.target

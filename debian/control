@@ -1,0 +1,18 @@
+Source: bckspc-bot
+Section: misc
+Maintainer: Lukas Braun <koomi@hackerspace-bamberg.de>
+Vcs-Git: https://github.com/k00mi/bckspc-bot.git
+Homepage: https://github.com/k00mi/bckspc-bot/
+Priority: optional
+Build-Depends: 
+	debhelper (>= 9),
+	ghc (>= 7.6),
+	cabal-install
+
+Package: bckspc-bot
+Architecture: any
+Section: misc
+Priority: optional
+Depends: ${misc:Depends}, ${shlibs:Depends},
+	ghc (>= 7.6),
+Description: IRC bot for the hackerspace in Bamberg, Germany
