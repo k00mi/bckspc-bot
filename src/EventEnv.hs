@@ -21,12 +21,10 @@ import           Control.Applicative
 import           Control.Concurrent         (MVar)
 import           Control.Exception
 import           Data.ByteString            (ByteString)
-import           Data.Foldable              (for_)
 import           Data.Maybe
 import           Data.Monoid
 import           Data.Text                  (Text)
 import           Data.Text.Encoding         (encodeUtf8, decodeUtf8)
-import           Network.MQTT               (MQTT)
 import qualified Network.MQTT               as MQTT
 import           Network.SimpleIRC
 import           System.IO                  (hPutStrLn, stderr)
@@ -41,7 +39,7 @@ data MsgEnv = MsgEnv
             }
 
 data MQTTEnv = MQTTEnv
-             { connection  :: Maybe MQTT
+             { connection  :: MQTT.Config
              , pizzaTopic  :: MQTT.Topic
              , alarmTopic  :: MQTT.Topic
              , soundTopic  :: MQTT.Topic
@@ -88,7 +86,6 @@ respondNick resp = do
 
 publish :: (MQTTEnv -> MQTT.Topic) -> ByteString -> EventEnv ()
 publish getTopic payload = do
-    mMqtt <- asks (connection . mqttEnv)
+    mqtt <- asks (connection . mqttEnv)
     topic <- asks (getTopic . mqttEnv)
-    for_ mMqtt $ \mqtt ->
-      lift $ MQTT.publish mqtt MQTT.NoConfirm False topic payload
+    lift $ MQTT.publish mqtt MQTT.NoConfirm False topic payload

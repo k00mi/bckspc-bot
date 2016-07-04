@@ -1,8 +1,10 @@
 {-# LANGUAGE OverloadedStrings, TupleSections #-}
 
 import           Control.Applicative
-import           Control.Concurrent         (MVar, newMVar, threadDelay)
-import           Control.Exception          (catch, SomeException(..))
+import           Control.Concurrent         (MVar, newMVar, threadDelay, forkIO)
+import           Control.Concurrent.STM     (newTChanIO)
+import           Control.Exception          (try, IOException)
+import           Control.Monad              (forever)
 import qualified Data.ByteString.Char8      as B
 import           Data.Foldable              (for_)
 import           Data.Text                  (isPrefixOf)
@@ -43,7 +45,8 @@ main = do
 startBot :: Config -> IO ()
 startBot cfg = do
     fileVar <- newMVar (karmaFile cfg)
-    mqttEnv <- mqttConnect cfg
+    mqttEnv <- mkMqttEnv cfg
+    forkIO $ forever $ do runMQTT (connection mqttEnv); threadDelay $ 30 * 10^6
     let ircCfg = (mkDefaultConfig (serv cfg) $ nick cfg)
                    { cChannels = [channel cfg]
                    , cPort     = port cfg
@@ -78,25 +81,17 @@ onMessage cmds url fileVar mqtt s message =
     applyCmd c args = runEnv (c args) url fileVar s message mqtt
 
 
-mqttConnect :: Config -> IO MQTTEnv
-mqttConnect cfg = do
-    mqtt <- MQTT.connect MQTT.defaultConfig
-                   { MQTT.cHost = mqttHost cfg
+mkMqttEnv :: Config -> IO MQTTEnv
+mkMqttEnv cfg = do
+    mqtt <- MQTT.defaultConfig <$> MQTT.mkCommands <*> newTChanIO
+    return $ MQTTEnv
+              mqtt { MQTT.cHost = mqttHost cfg
                    , MQTT.cKeepAlive = Just 60
                    , MQTT.cClientID = "bckspc-bot"
-                   , MQTT.cConnectTimeout = Just 10
-                   , MQTT.cReconnPeriod = Just 10
                    }
-    return $ defaultEnv { connection = Just mqtt }
-  `catch`
-    \(SomeException e) ->
-        errNoMqtt $ "Failed connecting to server: " ++ show e
-  where
-    errNoMqtt err = defaultEnv <$ hPutStrLn stderr ("No MQTT: " ++ err)
-    defaultEnv = MQTTEnv Nothing (fromString $ pizzaTopic cfg)
-                                 (fromString $ alarmTopic cfg)
-                                 (fromString $ soundTopic cfg)
-
+              (fromString $ pizzaTopic cfg)
+              (fromString $ alarmTopic cfg)
+              (fromString $ soundTopic cfg)
 
 onDisconnect :: MIrc -> IO ()
 onDisconnect mirc = do
@@ -112,3 +107,10 @@ onDisconnect mirc = do
           hPutStrLn stderr ("Reconnect failed: " ++ show err)
           threadDelay $ 10 * 10^6
           go
+
+runMQTT :: MQTT.Config -> IO ()
+runMQTT mqtt = do
+    putStrLn "[MQTT] Connecting"
+    rslt <- try (MQTT.run mqtt)
+    hPutStrLn stderr $
+      "[MQTT] " ++ either (show :: IOException -> String) show rslt

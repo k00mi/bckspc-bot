@@ -31,7 +31,9 @@ executable bckspc-bot
                  unordered-containers,
                  text,
                  attoparsec,
-                 mqtt-hs >= 0.3,
+                 mqtt-hs >= 1.0,
+                 unix >=2.6.0.1,
+                 stm >=2.4.2,
                  directory
   extensions: TemplateHaskell,
               OverloadedStrings,
