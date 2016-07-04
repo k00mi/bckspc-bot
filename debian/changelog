@@ -1,3 +1,9 @@
+bckspc-bot (0.3-1) UNRELEASED; urgency=medium
+
+  * Update to 0.3
+
+ -- Lukas Braun <koomi@hackerspace-bamberg.de>  Sat, 11 Jun 2016 21:11:54 +0200
+
 bckspc-bot (0.2-1) unstable; urgency=medium
 
   * Initial release.
